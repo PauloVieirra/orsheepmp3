@@ -1,0 +1,206 @@
+import React, { useState, useEffect } from 'react'
+import styled from 'styled-components'
+import { useNavigate } from 'react-router-dom'
+import PlaylistCard from '../components/PlaylistCard'
+
+const PlaylistsContainer = styled.div`
+  padding: 20px;
+  padding-bottom: 140px;
+`
+
+const Header = styled.div`
+  margin-bottom: 32px;
+  
+  h1 {
+    font-size: 2rem;
+    color: white;
+    margin: 0 0 16px;
+  }
+  
+  p {
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+  }
+`
+
+const Grid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+
+  /* Garantir que o botão de criar playlist também ocupe uma coluna */
+  & > button {
+    width: 100%;
+    aspect-ratio: 1;
+  }
+`
+
+const CreatePlaylistButton = styled.button`
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+  
+  svg {
+    font-size: 2rem;
+  }
+`
+
+const Modal = styled.div`
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #282828;
+  padding: 24px;
+  border-radius: 8px;
+  width: 300px;
+  z-index: 2001;
+
+  h3 {
+    margin: 0 0 16px;
+    color: white;
+    text-align: center;
+  }
+`
+
+const Overlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+`
+
+const Input = styled.input`
+  width: 100%;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-size: 1rem;
+  margin-bottom: 16px;
+  
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+  }
+  
+  &:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.15);
+  }
+`
+
+const Button = styled.button`
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0;
+  border: none;
+  border-radius: 4px;
+  background: ${props => props.$primary ? '#1db954' : 'rgba(255, 255, 255, 0.1)'};
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: ${props => props.$primary ? '#1ed760' : 'rgba(255, 255, 255, 0.2)'};
+  }
+`
+
+const Playlists = () => {
+  const navigate = useNavigate()
+  const [playlists, setPlaylists] = useState([])
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [newPlaylistName, setNewPlaylistName] = useState('')
+
+  useEffect(() => {
+    const savedPlaylists = JSON.parse(localStorage.getItem('playlists') || '[]')
+    setPlaylists(savedPlaylists)
+  }, [])
+
+  const handleCreatePlaylist = () => {
+    if (newPlaylistName.trim()) {
+      const newPlaylist = {
+        id: Date.now().toString(),
+        name: newPlaylistName.trim(),
+        tracks: []
+      }
+
+      const updatedPlaylists = [...playlists, newPlaylist]
+      localStorage.setItem('playlists', JSON.stringify(updatedPlaylists))
+      setPlaylists(updatedPlaylists)
+      setNewPlaylistName('')
+      setShowCreateModal(false)
+    }
+  }
+
+  const handlePlaylistClick = (playlist) => {
+    navigate('/playlist/' + playlist.id)
+  }
+
+  return (
+    <PlaylistsContainer>
+      <Header>
+        <h1>Minhas Playlists</h1>
+        <p>Gerencie suas coleções de músicas</p>
+      </Header>
+
+      <Grid>
+        <CreatePlaylistButton onClick={() => setShowCreateModal(true)}>
+          <span>+</span>
+          <span>Criar Nova Playlist</span>
+        </CreatePlaylistButton>
+        
+        {playlists.map(playlist => (
+          <PlaylistCard
+            key={playlist.id}
+            playlist={playlist}
+            onClick={handlePlaylistClick}
+          />
+        ))}
+      </Grid>
+
+      {showCreateModal && (
+        <>
+          <Overlay onClick={() => setShowCreateModal(false)} />
+          <Modal>
+            <h3>Nova Playlist</h3>
+            <Input
+              type="text"
+              placeholder="Nome da playlist"
+              value={newPlaylistName}
+              onChange={(e) => setNewPlaylistName(e.target.value)}
+            />
+            <Button $primary onClick={handleCreatePlaylist}>
+              Criar
+            </Button>
+            <Button onClick={() => setShowCreateModal(false)}>
+              Cancelar
+            </Button>
+          </Modal>
+        </>
+      )}
+    </PlaylistsContainer>
+  )
+}
+
+export default Playlists

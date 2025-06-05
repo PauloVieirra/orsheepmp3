@@ -1,0 +1,22 @@
+{
+  "name": "OrSheep MP3",
+  "short_name": "OrSheep",
+  "description": "Player de música com interface moderna e intuitiva",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#8B5CF6",
+  "icons": [
+    {
+      "src": "icon-512x512.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "prefer_related_applications": false,
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": true
+  }
+}
