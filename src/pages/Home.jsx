@@ -485,7 +485,6 @@ const Home = () => {
     }
     loadData()
   }, [])
-<<<<<<< HEAD
 
   const handlePlayTrack = (track) => {
     playTrack(track)
@@ -517,92 +516,6 @@ const Home = () => {
     )
   }
 
-=======
-
-  const handlePlayTrack = async (track) => {
-    // Adiciona a classe para o efeito visual
-    const cards = document.querySelectorAll('.track-card')
-    cards.forEach(card => {
-      if (card.dataset.trackId === track.id) {
-        card.classList.add('clicked')
-        setTimeout(() => card.classList.remove('clicked'), 300)
-      }
-    })
-
-    // Inicia a reprodução imediatamente
-    await playTrack(track, true) // Mudamos para true para iniciar automaticamente
-    
-    // Navega para a página do player após um pequeno delay
-    setTimeout(() => {
-      navigate('/player', { 
-        state: { track },
-        replace: true
-      })
-    }, 100)
-  }
-
-  const handlePlaylistClick = (playlist) => {
-    if (playlist.tracks.length > 0) {
-      setQueue(playlist.tracks) // Define a fila de reprodução
-      playTrack(playlist.tracks[0]) // Inicia com a primeira música
-      navigate('/player', { 
-        state: { 
-          track: playlist.tracks[0],
-          fromHome: true // Indica que veio da home
-        }
-      })
-    }
-  }
-
-  const getGreeting = () => {
-    const hour = new Date().getHours()
-    if (hour < 12) return 'Bom dia'
-    if (hour < 18) return 'Boa tarde'
-    return 'Boa noite'
-  }
-
-  const renderCard = (track) => (
-    <TrackCard 
-      key={track.id} 
-      onClick={() => handlePlayTrack(track)}
-      className={`track-card ${currentTrack?.id === track.id ? 'playing' : ''}`}
-      data-track-id={track.id}
-    >
-      <img 
-        src={track.image || getYouTubeThumbnail(track.id)} 
-        alt={track.title}
-        onError={(e) => {
-          e.target.src = getYouTubeThumbnail(track.id, 'default')
-        }}
-      />
-      <FavoriteButton
-        onClick={(e) => toggleFavorite(e, track)}
-        $isFavorite={favorites.some(fav => fav.id === track.id)}
-      >
-        {favorites.some(fav => fav.id === track.id) ? '♥' : '♡'}
-      </FavoriteButton>
-      <PlayingIndicator className="playing-indicator">
-        <AiFillPlayCircle />
-        {isPlaying ? 'Tocando' : 'Pausado'}
-      </PlayingIndicator>
-      <div className="info">
-        <h3>{track.title}</h3>
-        <p>YouTube Music</p>
-      </div>
-    </TrackCard>
-  )
-  
-  if (isLoading) {
-    return (
-      <HomeContainer>
-        <WelcomeSection>
-          <h1>Carregando...</h1>
-        </WelcomeSection>
-      </HomeContainer>
-    )
-  }
-
->>>>>>> teste
   return (
     <HomeContainer>
       <InstallPWA />
