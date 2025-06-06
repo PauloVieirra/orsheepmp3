@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import localforage from 'localforage';
 
 const StorageContext = createContext(null);
@@ -14,232 +14,155 @@ export function useStorage() {
 // Configuração dos stores do LocalForage
 const stores = {
   playlists: localforage.createInstance({
-    name: 'gestorUI',
-    storeName: 'playlists',
-    driver: [
-      localforage.INDEXEDDB,
-      localforage.WEBSQL,
-      localforage.LOCALSTORAGE
-    ]
+    name: 'orsheepUI',
+    storeName: 'playlists'
   }),
   favorites: localforage.createInstance({
-    name: 'gestorUI',
-    storeName: 'favorites',
-    driver: [
-      localforage.INDEXEDDB,
-      localforage.WEBSQL,
-      localforage.LOCALSTORAGE
-    ]
+    name: 'orsheepUI',
+    storeName: 'favorites'
   }),
   recentTracks: localforage.createInstance({
-    name: 'gestorUI',
-    storeName: 'recentTracks',
-    driver: [
-      localforage.INDEXEDDB,
-      localforage.WEBSQL,
-      localforage.LOCALSTORAGE
-    ]
+    name: 'orsheepUI',
+    storeName: 'recentTracks'
   }),
   audioBlobs: localforage.createInstance({
-    name: 'gestorUI',
-    storeName: 'audioBlobs',
-    driver: [
-      localforage.INDEXEDDB,
-      localforage.WEBSQL,
-      localforage.LOCALSTORAGE
-    ]
+    name: 'orsheepUI',
+    storeName: 'audioBlobs'
   }),
   thumbnails: localforage.createInstance({
-    name: 'gestorUI',
-    storeName: 'thumbnails',
-    driver: [
-      localforage.INDEXEDDB,
-      localforage.WEBSQL,
-      localforage.LOCALSTORAGE
-    ]
+    name: 'orsheepUI',
+    storeName: 'thumbnails'
   })
 };
 
 export const StorageProvider = ({ children }) => {
-  const [isStorageAvailable, setIsStorageAvailable] = useState(true);
-  const [fallbackStorage] = useState(() => new Map());
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [playlistsVersion, setPlaylistsVersion] = useState(0);
 
   useEffect(() => {
-    // Verificar disponibilidade do storage
-    const checkStorageAvailability = async () => {
+    const initializeStorage = async () => {
       try {
-        // Tenta escrever e ler um valor de teste
-        const testKey = '_test_storage_';
-        await stores.playlists.setItem(testKey, 'test');
-        await stores.playlists.removeItem(testKey);
-        setIsStorageAvailable(true);
+        // Inicializar os stores
+        await Promise.all(Object.values(stores).map(store => store.ready()));
+
+        // Migrar dados do localStorage para o LocalForage se existirem
+        const localStoragePlaylists = localStorage.getItem('playlists');
+        if (localStoragePlaylists) {
+          const playlists = JSON.parse(localStoragePlaylists);
+          await stores.playlists.setItem('playlists', playlists);
+          localStorage.removeItem('playlists'); // Limpa o localStorage após migração
+        }
+
+        // Garantir que temos um array de playlists
+        const playlists = await stores.playlists.getItem('playlists');
+        if (!playlists) {
+          await stores.playlists.setItem('playlists', []);
+        }
+
+        // Garantir que temos um array de músicas recentes
+        const recentTracks = await stores.recentTracks.getItem('recentTracks');
+        if (!recentTracks) {
+          await stores.recentTracks.setItem('recentTracks', []);
+        }
+
+        setIsInitialized(true);
       } catch (error) {
-        console.warn('Storage não está disponível, usando fallback em memória:', error);
-        setIsStorageAvailable(false);
+        console.error('Erro ao inicializar storage:', error);
+        setIsInitialized(true);
       }
     };
 
-    checkStorageAvailability();
-
-    // Inicializar os stores
-    Object.values(stores).forEach(store => {
-      store.ready().catch(error => {
-        console.warn('Erro ao inicializar store:', error);
-      });
-    });
+    initializeStorage();
   }, []);
 
-  const handleStorageOperation = async (operation, fallback) => {
-    try {
-      if (!isStorageAvailable) {
-        return fallback();
-      }
-      return await operation();
-    } catch (error) {
-      console.warn('Erro na operação de storage, usando fallback:', error);
-      return fallback();
+  const savePlaylists = useCallback(async (playlists) => {
+    if (!isInitialized) {
+      console.warn('Storage ainda não foi inicializado');
+      return;
     }
-  };
 
-  const saveThumbnail = async (id, blob) => {
-    return handleStorageOperation(
-      () => stores.thumbnails.setItem(id, blob),
-      () => fallbackStorage.set(`thumbnail_${id}`, blob)
-    );
-  };
-
-  const getThumbnail = async (id) => {
-    return handleStorageOperation(
-      () => stores.thumbnails.getItem(id),
-      () => fallbackStorage.get(`thumbnail_${id}`) || null
-    );
-  };
-
-  const saveAudioBlob = async (id, blob) => {
-    return handleStorageOperation(
-      () => stores.audioBlobs.setItem(id, blob),
-      () => fallbackStorage.set(`audio_${id}`, blob)
-    );
-  };
-
-  const getAudioBlob = async (id) => {
-    return handleStorageOperation(
-      () => stores.audioBlobs.getItem(id),
-      () => fallbackStorage.get(`audio_${id}`) || null
-    );
-  };
-
-  const savePlaylists = async (playlists) => {
-    return handleStorageOperation(
-      () => stores.playlists.setItem('playlists', playlists),
-      () => fallbackStorage.set('playlists', playlists)
-    );
-  };
-
-  const getPlaylists = async () => {
-    return handleStorageOperation(
-      () => stores.playlists.getItem('playlists'),
-      () => fallbackStorage.get('playlists') || []
-    );
-  };
-
-  const saveFavorites = async (favorites) => {
-    return handleStorageOperation(
-      () => stores.favorites.setItem('favorites', favorites),
-      () => fallbackStorage.set('favorites', favorites)
-    );
-  };
-
-  const getFavorites = async () => {
-    return handleStorageOperation(
-      () => stores.favorites.getItem('favorites'),
-      () => fallbackStorage.get('favorites') || []
-    );
-  };
-
-  const saveRecentTracks = async (tracks) => {
-    return handleStorageOperation(
-      () => stores.recentTracks.setItem('recentTracks', tracks),
-      () => fallbackStorage.set('recentTracks', tracks)
-    );
-  };
-
-  const getRecentTracks = async () => {
-    return handleStorageOperation(
-      () => stores.recentTracks.getItem('recentTracks'),
-      () => fallbackStorage.get('recentTracks') || []
-    );
-  };
-
-  const clearStorage = async () => {
-    if (isStorageAvailable) {
-      try {
-        await Promise.all(Object.values(stores).map(store => store.clear()));
-      } catch (error) {
-        console.warn('Erro ao limpar storage:', error);
-      }
-    }
-    fallbackStorage.clear();
-  };
-
-  const getSettings = async () => {
     try {
-      const settings = JSON.parse(localStorage.getItem('settings') || '{}');
-      return settings;
-    } catch (error) {
-      console.error('Erro ao carregar configurações:', error);
-      return {};
-    }
-  };
-
-  const saveSettings = async (settings) => {
-    try {
-      localStorage.setItem('settings', JSON.stringify(settings));
-    } catch (error) {
-      console.error('Erro ao salvar configurações:', error);
-    }
-  };
-
-  const clearCache = async () => {
-    try {
-      // Limpa o cache do service worker
-      if ('caches' in window) {
-        const cacheKeys = await caches.keys();
-        await Promise.all(cacheKeys.map(key => caches.delete(key)));
-      }
-
-      // Limpa o localStorage, mantendo apenas as configurações
-      const settings = await getSettings();
-      localStorage.clear();
-      await saveSettings(settings);
-
+      await stores.playlists.setItem('playlists', playlists);
+      setPlaylistsVersion(v => v + 1); // Incrementa a versão para forçar atualização
       return true;
     } catch (error) {
-      console.error('Erro ao limpar cache:', error);
+      console.error('Erro ao salvar playlists:', error);
+      return false;
+    }
+  }, [isInitialized]);
+
+  const getPlaylists = useCallback(async () => {
+    if (!isInitialized) {
+      console.warn('Storage ainda não foi inicializado');
+      return [];
+    }
+
+    try {
+      const playlists = await stores.playlists.getItem('playlists');
+      return playlists || [];
+    } catch (error) {
+      console.error('Erro ao carregar playlists:', error);
+      return [];
+    }
+  }, [isInitialized]);
+
+  const saveRecentTracks = async (tracks) => {
+    if (!isInitialized) return;
+    try {
+      await stores.recentTracks.setItem('recentTracks', tracks);
+      return true;
+    } catch (error) {
+      console.error('Erro ao salvar músicas recentes:', error);
       return false;
     }
   };
 
+  const getRecentTracks = async () => {
+    if (!isInitialized) return [];
+    try {
+      const tracks = await stores.recentTracks.getItem('recentTracks');
+      return tracks || [];
+    } catch (error) {
+      console.error('Erro ao carregar músicas recentes:', error);
+      return [];
+    }
+  };
+
+  const saveFavoriteTracks = async (tracks) => {
+    if (!isInitialized) return;
+    try {
+      await stores.favorites.setItem('favoriteTracks', tracks);
+      return true;
+    } catch (error) {
+      console.error('Erro ao salvar músicas favoritas:', error);
+      return false;
+    }
+  };
+
+  const getFavoriteTracks = async () => {
+    if (!isInitialized) return [];
+    try {
+      const tracks = await stores.favorites.getItem('favoriteTracks');
+      return tracks || [];
+    } catch (error) {
+      console.error('Erro ao carregar músicas favoritas:', error);
+      return [];
+    }
+  };
+
+  const value = {
+    savePlaylists,
+    getPlaylists,
+    saveRecentTracks,
+    getRecentTracks,
+    saveFavoriteTracks,
+    getFavoriteTracks,
+    isInitialized,
+    playlistsVersion // Adiciona a versão ao contexto
+  };
+
   return (
-    <StorageContext.Provider
-      value={{
-        saveThumbnail,
-        getThumbnail,
-        saveAudioBlob,
-        getAudioBlob,
-        savePlaylists,
-        getPlaylists,
-        saveFavorites,
-        getFavorites,
-        saveRecentTracks,
-        getRecentTracks,
-        clearStorage,
-        isStorageAvailable,
-        getSettings,
-        saveSettings,
-        clearCache
-      }}
-    >
+    <StorageContext.Provider value={value}>
       {children}
     </StorageContext.Provider>
   );

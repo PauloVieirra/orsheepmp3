@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react'
 import styled from 'styled-components'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { usePlayer } from '../contexts/PlayerContext'
-import { AiOutlineArrowLeft, AiOutlinePlus, AiOutlineStepBackward, AiOutlineStepForward, AiFillPlayCircle, AiFillPauseCircle, AiOutlineHeart, AiFillHeart, AiOutlineCloud, AiOutlineDownload, AiOutlineDelete } from 'react-icons/ai'
+import { useStorage } from '../contexts/StorageContext'
+import { AiOutlineArrowLeft, AiOutlinePlus, AiOutlineStepBackward, AiOutlineStepForward, AiFillPlayCircle, AiFillPauseCircle, AiOutlineHeart, AiFillHeart, AiOutlineCloud, AiOutlineDownload, AiOutlineSync } from 'react-icons/ai'
 import { BiShuffle, BiRepeat } from 'react-icons/bi'
-import { MdDeleteForever } from 'react-icons/md'
 import AddToPlaylistModal from '../components/AddToPlaylistModal'
 import DownloadService from '../services/DownloadService'
 
@@ -213,63 +213,86 @@ const TimeInfo = styled.div`
 const AdditionalControls = styled.div`
   display: flex;
   justify-content: center;
-  gap: 16px;
-  margin: 16px 0 32px;
+  gap: 24px;
+  margin-top: 32px;
+  width: 100%;
 
   button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
     background: none;
     border: none;
     color: white;
-    font-size: 1.5rem;
     cursor: pointer;
-    padding: 8px;
-    border-radius: 50%;
     transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+
+    svg {
+      font-size: 1.5rem;
+    }
+
+    span {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
 
     &:hover {
       background: rgba(139, 92, 246, 0.1);
       color: #8B5CF6;
-    }
 
-    &.active {
-      color: #8B5CF6;
-    }
-
-    &.delete {
-      display: none;
-      color: #ff4444;
-      
-      &:hover {
-        background: rgba(255, 68, 68, 0.1);
-        color: #ff4444;
+      span {
+        color: #8B5CF6;
       }
     }
 
-    span {
-      font-size: 0.9rem;
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+
+      &:hover {
+        background: none;
+        color: white;
+
+        span {
+          color: rgba(255, 255, 255, 0.7);
+        }
+      }
     }
   }
 `
 
 const QueueContainer = styled.div`
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-  padding: 16px;
-  margin-top: 32px;
+  width: 100%;
+  margin-top: 48px;
+`
 
-  h2 {
-    font-size: 1.2rem;
-    margin: 0 0 16px;
-    color: white;
+const QueueTitle = styled.h2`
+  font-size: 1.2rem;
+  color: white;
+  margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  span {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
   }
+`
+
+const QueueList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 `
 
 const QueueItem = styled.div`
   display: flex;
   align-items: center;
+  gap: 12px;
   padding: 8px;
   border-radius: 8px;
   cursor: pointer;
@@ -281,10 +304,10 @@ const QueueItem = styled.div`
   }
 
   img {
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
     border-radius: 4px;
-    margin-right: 12px;
+    object-fit: cover;
   }
 
   .info {
@@ -292,8 +315,8 @@ const QueueItem = styled.div`
     min-width: 0;
 
     h3 {
-      margin: 0;
-      font-size: 0.9rem;
+      margin: 0 0 4px;
+      font-size: 1rem;
       color: ${props => props.$active ? '#8B5CF6' : 'white'};
       white-space: nowrap;
       overflow: hidden;
@@ -301,15 +324,10 @@ const QueueItem = styled.div`
     }
 
     p {
-      margin: 4px 0 0;
-      font-size: 0.8rem;
+      margin: 0;
+      font-size: 0.9rem;
       color: rgba(255, 255, 255, 0.7);
     }
-  }
-
-  .playing-indicator {
-    color: #8B5CF6;
-    margin-left: 8px;
   }
 `
 
@@ -317,39 +335,29 @@ const Content = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px;
-  animation: slideUp 0.3s ease;
-
-  @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 0 20px;
 `
 
 const Thumbnail = styled.div`
   width: 280px;
   height: 280px;
   margin-bottom: 24px;
-  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   }
 `
 
 const Progress = styled.div`
   height: 100%;
-  background: #8B5CF6;
+  background:rgb(246, 244, 92);
   border-radius: 2px;
   position: relative;
 `
@@ -368,26 +376,6 @@ const ProgressHandle = styled.div`
 
   ${ProgressBar}:hover & {
     transform: scale(1);
-  }
-`
-
-const QueueList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`
-
-const QueueTitle = styled.h2`
-  font-size: 1.2rem;
-  color: white;
-  margin: 0 0 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  span {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.9rem;
   }
 `
 
@@ -416,33 +404,6 @@ const ControlButton = styled.button`
   }
 `
 
-const DeleteButton = styled.button`
-  position: absolute;
-  right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: #ff4444;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    background: rgba(255, 68, 68, 0.1);
-    transform: translateY(-50%) scale(1.1);
-  }
-
-  &:active {
-    transform: translateY(-50%) scale(0.95);
-  }
-`
-
 const PlayerPage = () => {
   const location = useLocation()
   const navigate = useNavigate()
@@ -461,14 +422,9 @@ const PlayerPage = () => {
     toggleShuffle,
     queue,
     currentQueueIndex,
-    playTrack,
-    removeTrack,
-    currentPlaylist,
-    getPlaylists,
-    savePlaylists,
-    setCurrentTrack,
-    setIsPlaying
+    playTrack
   } = usePlayer()
+  const { getFavoriteTracks, saveFavoriteTracks } = useStorage()
   const [isFavorite, setIsFavorite] = useState(false)
   const [showPlaylistModal, setShowPlaylistModal] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
@@ -486,11 +442,11 @@ const PlayerPage = () => {
   useEffect(() => {
     // Verifica se a música está nos favoritos
     const checkFavorite = async () => {
-      const favorites = JSON.parse(localStorage.getItem('favoriteTracks') || '[]')
+      const favorites = await getFavoriteTracks()
       setIsFavorite(favorites.some(fav => fav.id === currentTrack?.id))
     }
     checkFavorite()
-  }, [currentTrack])
+  }, [currentTrack, getFavoriteTracks])
 
   useEffect(() => {
     if (currentTrack) {
@@ -541,15 +497,6 @@ const PlayerPage = () => {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }
 
-  const handlePlayerReady = (event) => {
-    setPlayerReady(true)
-  }
-
-  const handlePlayerStateChange = (event) => {
-    // Aqui você pode adicionar lógica para lidar com mudanças de estado do player
-    // Por exemplo, atualizar o estado de reprodução, duração, etc.
-  }
-
   const handleBack = () => {
     // Se veio de uma rota específica, volta para ela
     if (location.state?.from) {
@@ -559,62 +506,24 @@ const PlayerPage = () => {
       navigate(-1)
     }
   }
-
-  const handleDeleteTrack = async () => {
+  
+  const handleToggleFavorite = async () => {
     if (!currentTrack) return
 
-    if (window.confirm(`Tem certeza que deseja excluir permanentemente a música "${currentTrack.title}" do aplicativo?\nEla será removida de todas as playlists e da biblioteca.`)) {
-      try {
-        // 1. Remove de todas as playlists
-        const playlists = await getPlaylists() || []
-        const updatedPlaylists = playlists.map(playlist => ({
-          ...playlist,
-          tracks: playlist.tracks.filter(track => track.id !== currentTrack.id)
-        }))
-        await savePlaylists(updatedPlaylists)
-
-        // 2. Remove do localStorage
-        const storageKeys = [
-          'favoriteTracks',
-          'recentTracks',
-          'lastSearchResults',
-          'currentPlayerState'
-        ]
-
-        storageKeys.forEach(key => {
-          try {
-            const items = JSON.parse(localStorage.getItem(key) || '[]')
-            if (Array.isArray(items)) {
-              const filtered = items.filter(item => item?.id !== currentTrack.id)
-              localStorage.setItem(key, JSON.stringify(filtered))
-            }
-          } catch (e) {
-            console.warn(`Erro ao processar ${key}:`, e)
-          }
-        })
-
-        // 3. Remove arquivos baixados
-        if ('caches' in window) {
-          const cacheKeys = await caches.keys()
-          await Promise.all(cacheKeys.map(async key => {
-            const cache = await caches.open(key)
-            const requests = await cache.keys()
-            const trackRequests = requests.filter(req => req.url.includes(currentTrack.id))
-            await Promise.all(trackRequests.map(req => cache.delete(req)))
-          }))
-        }
-
-        // 4. Limpa o player e retorna para a tela inicial
-        setIsPlaying(false)
-        setCurrentTrack(null)
-        navigate('/')
-        
-        alert('Música excluída com sucesso do aplicativo!')
-      } catch (error) {
-        console.error('Erro ao excluir música:', error)
-        alert('Erro ao excluir música. Tente novamente.')
-      }
+    const favorites = await getFavoriteTracks()
+    const trackIndex = favorites.findIndex(fav => fav.id === currentTrack.id)
+    
+    let newFavorites
+    if (trackIndex === -1) {
+      // Adiciona aos favoritos
+      newFavorites = [...favorites, { ...currentTrack, addedAt: new Date().toISOString() }]
+    } else {
+      // Remove dos favoritos
+      newFavorites = favorites.filter(fav => fav.id !== currentTrack.id)
     }
+    
+    await saveFavoriteTracks(newFavorites)
+    setIsFavorite(!isFavorite)
   }
   
   if (!currentTrack) return null
@@ -626,21 +535,13 @@ const PlayerPage = () => {
           <button onClick={handleBack}>
             <AiOutlineArrowLeft />
           </button>
-          <span>Reproduzindo agora</span>
+          <span></span>
         </div>
         <div className="right">
-          <button onClick={() => setIsFavorite(!isFavorite)}>
-            {isFavorite ? <AiFillHeart style={{ color: '#8B5CF6' }} /> : <AiOutlineHeart />}
-          </button>
-          <button 
-            onClick={handleDownload} 
-            disabled={isDownloading || isDownloaded}
-            style={{ color: isDownloaded ? '#8B5CF6' : 'white' }}
-          >
-            {isDownloaded ? <AiOutlineCloud /> : <AiOutlineDownload />}
-          </button>
+         
+         
           <button onClick={() => setShowPlaylistModal(true)}>
-            <AiOutlinePlus />
+            
           </button>
         </div>
       </Header>
@@ -695,25 +596,17 @@ const PlayerPage = () => {
             </Controls>
 
             <AdditionalControls>
-              <button onClick={() => setIsFavorite(!isFavorite)}>
+              <button onClick={handleToggleFavorite}>
                 {isFavorite ? <AiFillHeart style={{ color: '#8B5CF6' }} /> : <AiOutlineHeart />}
                 <span>Favoritar</span>
               </button>
-              <button 
-                onClick={handleDownload} 
-                disabled={isDownloading || isDownloaded}
-                style={{ color: isDownloaded ? '#8B5CF6' : 'white' }}
-              >
-                {isDownloaded ? <AiOutlineCloud /> : <AiOutlineDownload />}
-                <span>{isDownloaded ? 'Baixada' : 'Baixar'}</span>
+              <button onClick={toggleAutoPlay} style={{ color: autoPlay ? '#8B5CF6' : 'white' }}>
+                <AiOutlineSync />
+                <span>Autoplay</span>
               </button>
               <button onClick={() => setShowPlaylistModal(true)}>
                 <AiOutlinePlus />
                 <span>Playlist</span>
-              </button>
-              <button onClick={handleDeleteTrack} className="delete">
-                <MdDeleteForever />
-                <span>Excluir 1</span>
               </button>
             </AdditionalControls>
           </>
@@ -746,7 +639,7 @@ const PlayerPage = () => {
         )}
       </Content>
 
-      {!fromHome && showPlaylistModal && (
+      {showPlaylistModal && (
         <AddToPlaylistModal
           track={currentTrack}
           onClose={() => setShowPlaylistModal(false)}

@@ -4,14 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import { useStorage } from '../contexts/StorageContext'
 import { usePlayer } from '../contexts/PlayerContext'
 import { useApiKey } from '../contexts/ApiKeyContext'
-import PlaylistCard from '../components/PlaylistCard'
-import { AiOutlinePlayCircle, AiFillPlayCircle, AiOutlineUser, AiOutlineLinkedin } from 'react-icons/ai'
+import { useInterests } from '../contexts/InterestsContext'
+import { AiOutlinePlayCircle, AiFillPlayCircle, AiOutlineHeart } from 'react-icons/ai'
 import InstallPWA from '../components/InstallPWA'
-
-const getYouTubeThumbnail = (videoId, quality = 'mqdefault') => {
-  if (!videoId) return ''
-  return `https://img.youtube.com/vi/${videoId}/${quality}.jpg`
-}
 
 const HomeContainer = styled.div`
   padding: 20px;
@@ -44,38 +39,116 @@ const Section = styled.section`
   }
 `
 
+const InterestsSection = styled(Section)`
+  .content {
+    position: relative;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    padding-bottom: 16px;
+
+    /* Esconde a scrollbar no Chrome/Safari */
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    
+    /* Esconde a scrollbar no Firefox */
+    scrollbar-width: none;
+  }
+`
+
+const InterestsRow = styled.div`
+  display: flex;
+  gap: 16px;
+  padding: 4px;
+  min-width: min-content;
+
+  /* Adiciona um espaço no final para o último card */
+  &::after {
+    content: '';
+    flex: 0 0 1px;
+  }
+`
+
+const InterestCard = styled.div`
+  flex: 0 0 200px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  img {
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+  }
+
+  .info {
+    padding: 12px;
+
+    h3 {
+      margin: 0;
+      color: white;
+      font-size: 0.9rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    p {
+      margin: 4px 0 0;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.8rem;
+    }
+  }
+`
+
+const EmptyInterestMessage = styled.div`
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 8px 0;
+  
+  svg {
+    font-size: 2rem;
+    color: #8B5CF6;
+    margin-bottom: 12px;
+    opacity: 0.8;
+  }
+
+  h3 {
+    margin: 0 0 8px;
+    color: white;
+    font-size: 1rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+`
+
 const TrackGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
+  padding: 4px;
 `
 
 const PlaylistsGrid = styled.div`
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 16px;
-  overflow-x: auto;
   padding-bottom: 16px;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-
-  &::-webkit-scrollbar {
-    height: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 4px;
-  }
-
-  & > * {
-    flex: 0 0 calc(40% - 8px); /* 2.5 itens visíveis */
-    scroll-snap-align: start;
-  }
 `
 
 const TrackCard = styled.div`
@@ -94,26 +167,6 @@ const TrackCard = styled.div`
 
   &:active {
     transform: scale(0.98);
-  }
-
-  &::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    transition: width 0.3s, height 0.3s;
-    pointer-events: none;
-  }
-
-  &.clicked::after {
-    width: 200%;
-    height: 200%;
-    opacity: 0;
   }
 
   &.playing {
@@ -171,70 +224,6 @@ const PlayingIndicator = styled.div`
   }
 `
 
-const FavoriteButton = styled.button`
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgba(0, 0, 0, 0.5);
-  border: none;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: ${props => props.$isFavorite ? '#8B5CF6' : 'white'};
-  transition: transform 0.2s, color 0.2s;
-  
-  &:hover {
-    transform: scale(1.1);
-    color: ${props => props.$isFavorite ? '#7C3AED' : '#8B5CF6'};
-  }
-`
-
-const Card = styled.div`
-  position: relative;
-  flex: 0 0 200px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.2s, background 0.2s;
-  
-  &:hover {
-    transform: translateY(-4px);
-    background: rgba(255, 255, 255, 0.1);
-  }
-  
-  img {
-    width: 100%;
-    aspect-ratio: 16/9;
-    object-fit: cover;
-  }
-  
-  .info {
-    padding: 12px;
-    
-    h3 {
-      margin: 0;
-      font-size: 1rem;
-      color: white;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-    }
-    
-    p {
-      margin: 4px 0 0;
-      font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.7);
-    }
-  }
-`
-
 const WelcomeCard = styled.div`
   background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
@@ -242,262 +231,277 @@ const WelcomeCard = styled.div`
   margin-bottom: 32px;
 
   h2 {
-    color: #1db954;
-    font-size: 2.5rem;
-    margin: 0 0 16px;
-    text-align: center;
+    font-size: 1.8rem;
+    color: white;
+    margin: 0 0 8px;
   }
 
   .subtitle {
-    color: white;
+    color: #8B5CF6;
     font-size: 1.2rem;
-    text-align: center;
     margin-bottom: 24px;
   }
 
   .description {
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.7);
     line-height: 1.6;
-    margin-bottom: 24px;
-  }
-
-  .tutorial {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 24px;
-
-    h3 {
-      color: white;
-      margin: 0 0 12px;
-    }
-
-    ol {
-      color: rgba(255, 255, 255, 0.8);
-      margin: 0;
-      padding-left: 24px;
-
-      li {
-        margin-bottom: 8px;
-      }
-
-      a {
-        color: #8B5CF6;
-        text-decoration: none;
-        &:hover {
-          text-decoration: underline;
-        }
-      }
-    }
   }
 `
 
-const InterestScroll = styled.div`
-  display: flex;
-  overflow-x: auto;
-  gap: 16px;
-  padding-bottom: 16px;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-
-  &::-webkit-scrollbar {
-    height: 4px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 2px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 2px;
-  }
-`
-
-const InterestCard = styled.div`
-  flex: 0 0 200px;
-  scroll-snap-align: start;
+const EmptyCard = styled.div`
   background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
-  overflow: hidden;
-  transition: all 0.2s;
-  cursor: pointer;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateY(-4px);
-  }
-
-  img {
-    width: 100%;
-    height: 120px;
-    object-fit: cover;
-  }
-
-  .info {
-    padding: 12px;
-
-    h3 {
-      margin: 0;
-      font-size: 1rem;
-      color: white;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    p {
-      margin: 4px 0 0;
-      font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.7);
-    }
-  }
-`
-
-const RecentGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-`
-
-const RecentCard = styled.div`
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  overflow: hidden;
+  padding: 16px;
   display: flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 12px;
-  padding: 12px;
+  min-height: 200px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+
+  svg {
+    font-size: 2rem;
+    opacity: 0.5;
+  }
+
+  h3 {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+`
+
+const EmptyPlaylistCard = styled.div`
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  width: calc(65vw - 20px); /* Mesmo tamanho dos outros cards */
+  max-width: 300px;
+  min-width: 200px;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  
+  svg {
+    font-size: 2rem;
+    color: #8B5CF6;
+    margin-bottom: 12px;
+    opacity: 0.8;
+  }
+
+  h3 {
+    margin: 0 0 8px;
+    color: white;
+    font-size: 1rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+`
+
+const EmptyTrackCard = styled(EmptyCard)`
+  min-height: 220px;
+`
+
+const PlaylistsSection = styled.section`
+  margin-bottom: 32px;
+  overflow: hidden;
+
+  h2 {
+    font-size: 1.5rem;
+    color: white;
+    margin: 0 0 16px;
+  }
+
+  .content {
+    position: relative;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    padding-bottom: 16px;
+    margin: 0 -20px;
+    padding: 0 20px;
+
+    /* Esconde a scrollbar no Chrome/Safari */
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    
+    /* Esconde a scrollbar no Firefox */
+    scrollbar-width: none;
+  }
+`
+
+const PlaylistsRow = styled.div`
+  display: flex;
+  gap: 16px;
+  padding: 4px;
+  width: fit-content;
+
+  & > * {
+    flex: 0 0 calc(65vw - 20px); /* 1.5 itens por vez (considerando o padding da página) */
+    max-width: 300px; /* Limita o tamanho máximo do card */
+    min-width: 200px; /* Garante um tamanho mínimo para o card */
+  }
+`
+
+const PlaylistCard = styled.div`
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  overflow: hidden;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  aspect-ratio: 1;
+  position: relative;
 
   &:hover {
+    transform: translateY(-4px);
     background: rgba(255, 255, 255, 0.1);
   }
 
-  img {
-    width: 64px;
-    height: 64px;
-    border-radius: 4px;
-    object-fit: cover;
-  }
+  .cover {
+    width: 100%;
+    aspect-ratio: 1;
+    position: relative;
+    background: #282828;
 
-  .info {
-    flex: 1;
-    min-width: 0;
-
-    h3 {
-      margin: 0;
-      font-size: 0.9rem;
-      color: white;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
-    p {
-      margin: 4px 0 0;
-      font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.7);
+    .play-icon {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      font-size: 2rem;
+      color: #8B5CF6;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 50%;
+      background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+      pointer-events: none;
     }
   }
 
-  .play-icon {
-    opacity: 0;
-    color: #1db954;
-    font-size: 1.5rem;
-    transition: opacity 0.2s;
-  }
-
-  &:hover .play-icon {
+  &:hover .cover .play-icon {
     opacity: 1;
   }
-`
 
-const SocialLinks = styled.div`
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin: 24px 0;
+  .info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 16px;
+    z-index: 1;
 
-  a {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #8B5CF6;
-    text-decoration: none;
-    padding: 8px 16px;
-    border-radius: 20px;
-    background: rgba(139, 92, 246, 0.1);
-    transition: all 0.2s;
-
-    &:hover {
-      background: rgba(139, 92, 246, 0.2);
-      transform: translateY(-2px);
+    h3 {
+      margin: 0;
+      font-size: 1.1rem;
+      color: white;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.5);
     }
 
-    svg {
-      font-size: 1.2rem;
+    p {
+      margin: 4px 0 0;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.7);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
     }
   }
 `
+
+const getYouTubeThumbnail = (videoId, quality = 'mqdefault') => {
+  if (!videoId) return ''
+  return `https://img.youtube.com/vi/${videoId}/${quality}.jpg`
+}
 
 const Home = () => {
   const navigate = useNavigate()
-  const { getRecentTracks, getFavorites, saveFavorites, saveRecentTracks } = useStorage()
-  const { playTrack, setQueue, currentTrack, isPlaying } = usePlayer()
-  const { apiKey, isLoading: isLoadingApi } = useApiKey()
-  const [recentTracks, setRecentTracks] = useState([])
-  const [topTracks, setTopTracks] = useState([])
-  const [recommendations, setRecommendations] = useState([])
-  const [favorites, setFavorites] = useState([])
-  const [interests, setInterests] = useState([])
+  const { getPlaylists, getFavoriteTracks, playlistsVersion } = useStorage()
+  const { playTrack, playPlaylist, currentTrack } = usePlayer()
+  const { apiKey, isLoadingApi } = useApiKey()
+  const { interests, isLoading: isLoadingInterests } = useInterests()
   const [playlists, setPlaylists] = useState([])
-  const [offlineTracks, setOfflineTracks] = useState([])
+  const [favoriteTracks, setFavoriteTracks] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [recentTracksData, favoritesData] = await Promise.all([
-          getRecentTracks(),
-          getFavorites()
-        ])
-        setRecentTracks(recentTracksData || [])
-        setFavorites(favoritesData || [])
+        setIsLoading(true)
+        console.log('Carregando dados...')
         
-        const savedInterests = JSON.parse(localStorage.getItem('interests') || '[]')
-        setInterests(savedInterests)
-
-        const savedPlaylists = JSON.parse(localStorage.getItem('playlists') || '[]')
-        setPlaylists(savedPlaylists)
-
+        // Carregar dados do storage
+        const savedPlaylists = await getPlaylists()
+        const savedFavoriteTracks = await getFavoriteTracks()
+        
+        console.log('Playlists carregadas:', savedPlaylists)
+        console.log('Músicas favoritas carregadas:', savedFavoriteTracks)
+        
+        // Atualizar o estado com os dados carregados
+        setPlaylists(savedPlaylists || [])
+        setFavoriteTracks(savedFavoriteTracks || [])
       } catch (error) {
         console.error('Erro ao carregar dados:', error)
-        setRecentTracks([])
-        setFavorites([])
-        setInterests([])
-        setPlaylists([])
       } finally {
         setIsLoading(false)
       }
     }
+
     loadData()
-  }, [])
+  }, [getPlaylists, getFavoriteTracks, playlistsVersion])
 
   const handlePlayTrack = (track) => {
     playTrack(track)
+    navigate('/player', { 
+      state: { 
+        track,
+        fromHome: true,
+        keepPlaying: true
+      }
+    })
   }
 
   const handlePlaylistClick = (playlist) => {
-    navigate(`/playlist/${playlist.id}`)
+    if (playlist.tracks.length > 0) {
+      playPlaylist(playlist)
+      navigate('/player', { 
+        state: { 
+          track: playlist.tracks[0],
+          fromHome: true,
+          keepPlaying: true
+        }
+      })
+    }
   }
 
-  const getYouTubeThumbnail = (videoId, quality = 'mqdefault') => {
-    return `https://img.youtube.com/vi/${videoId}/${quality}.jpg`
-  }
-  
   const getGreeting = () => {
     const hour = new Date().getHours()
     if (hour < 12) return 'Bom dia'
@@ -505,13 +509,12 @@ const Home = () => {
     return 'Boa noite'
   }
 
-  // Mostra loading enquanto verifica a API key
-  if (isLoadingApi) {
+  if (isLoading || isLoadingInterests) {
     return (
       <HomeContainer>
-        <WelcomeSection>
-          <h1>Carregando...</h1>
-        </WelcomeSection>
+        <div style={{ color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center', padding: '20px' }}>
+          Carregando...
+        </div>
       </HomeContainer>
     )
   }
@@ -538,43 +541,7 @@ const Home = () => {
             ferramentas de IA para facilitar o trabalho de design de interfaces e experiência do 
             usuário.
           </div>
-
-          <SocialLinks>
-            <a href="https://vgents.vercel.app/" target="_blank" rel="noopener noreferrer">
-              <AiOutlineUser />
-              Portfólio
-            </a>
-            <a href="https://www.linkedin.com/in/paulo-vieira-a16723210/" target="_blank" rel="noopener noreferrer">
-              <AiOutlineLinkedin />
-              LinkedIn
-            </a>
-          </SocialLinks>
-
-          <div className="tutorial">
-            <h3>📝 Como Começar</h3>
-            <ol>
-              <li>
-                Primeiro, você precisa de uma chave da API do YouTube v3. Você pode obtê-la
-                gratuitamente no <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer">
-                Google Cloud Console</a>.
-              </li>
-              <li>
-                A API oferece uma cota diária gratuita que geralmente é suficiente para uso
-                moderado do aplicativo.
-              </li>
-              <li>
-                Após obter sua chave, vá até a página de Configurações e adicione-a no campo
-                apropriado.
-              </li>
-              <li>
-                Pronto! Agora você pode pesquisar e desfrutar de suas músicas favoritas com
-                nossa interface moderna e intuitiva.
-              </li>
-            </ol>
-          </div>
         </WelcomeCard>
-      ) : isLoading ? (
-        <div>Carregando...</div>
       ) : (
         <>
           <WelcomeSection>
@@ -582,53 +549,89 @@ const Home = () => {
             <p>O que você quer ouvir hoje?</p>
           </WelcomeSection>
 
-          {playlists?.length > 0 && (
-            <Section>
-              <h2>Suas Playlists</h2>
-              <PlaylistsGrid>
-                {playlists.map(playlist => (
-                  <PlaylistCard
-                    key={playlist.id}
-                    playlist={playlist}
-                    onClick={() => handlePlaylistClick(playlist)}
-                  />
-                ))}
-              </PlaylistsGrid>
-            </Section>
-          )}
+          <PlaylistsSection>
+            <h2>Suas Playlists</h2>
+            <div className="content">
+              <PlaylistsRow>
+                {playlists?.length > 0 ? (
+                  playlists.map(playlist => (
+                    <PlaylistCard
+                      key={playlist.id}
+                      onClick={() => handlePlaylistClick(playlist)}
+                    >
+                      <div className="cover">
+                        {playlist.tracks[0] && (
+                          <img 
+                            src={`https://img.youtube.com/vi/${playlist.tracks[0].id}/mqdefault.jpg`}
+                            alt={playlist.name}
+                            onError={(e) => {
+                              e.target.src = `https://img.youtube.com/vi/${playlist.tracks[0].id}/default.jpg`
+                            }}
+                          />
+                        )}
+                        <AiFillPlayCircle className="play-icon" />
+                      </div>
+                      <div className="info">
+                        <h3>{playlist.name}</h3>
+                        <p>{playlist.tracks.length} músicas</p>
+                      </div>
+                    </PlaylistCard>
+                  ))
+                ) : (
+                  <EmptyPlaylistCard>
+                    <AiOutlinePlayCircle />
+                    <h3>Nenhuma playlist criada</h3>
+                    <p>Crie sua primeira playlist para começar</p>
+                  </EmptyPlaylistCard>
+                )}
+              </PlaylistsRow>
+            </div>
+          </PlaylistsSection>
 
-          {interests?.length > 0 && (
-            <Section>
-              <h2>Seus Interesses</h2>
-              <InterestScroll>
-                {interests.map(interest => (
-                  <InterestCard 
-                    key={interest.id} 
-                    onClick={() => handlePlayTrack(interest)}
+          <InterestsSection>
+            <h2>Meus Interesses</h2>
+            {interests.length > 0 ? (
+              <div className="content">
+                <InterestsRow>
+                  {interests.map(track => (
+                    <InterestCard 
+                      key={track.id}
+                      onClick={() => handlePlayTrack(track)}
+                    >
+                      <img 
+                        src={track.thumbnail || getYouTubeThumbnail(track.id)}
+                        alt={track.title} 
+                        onError={(e) => {
+                          e.target.src = getYouTubeThumbnail(track.id, 'default')
+                        }}
+                      />
+                      <div className="info">
+                        <h3>{track.title}</h3>
+                        <p>{track.channelTitle || 'YouTube Music'}</p>
+                      </div>
+                    </InterestCard>
+                  ))}
+                </InterestsRow>
+              </div>
+            ) : (
+              <EmptyInterestMessage>
+                <AiOutlinePlayCircle />
+                <h3>Nenhuma música adicionada aos interesses</h3>
+                <p>Adicione músicas que você mais gosta para aparecerem aqui</p>
+              </EmptyInterestMessage>
+            )}
+          </InterestsSection>
+
+          <Section>
+            <h2>Músicas Curtidas</h2>
+            <TrackGrid>
+              {favoriteTracks?.length > 0 ? (
+                favoriteTracks.map(track => (
+                  <TrackCard 
+                    key={track.id}
+                    onClick={() => handlePlayTrack(track)}
+                    className={currentTrack?.id === track.id ? 'playing' : ''}
                   >
-                    <img 
-                      src={interest.image || getYouTubeThumbnail(interest.id)}
-                      alt={interest.title}
-                      onError={(e) => {
-                        e.target.src = getYouTubeThumbnail(interest.id, 'default')
-                      }}
-                    />
-                    <div className="info">
-                      <h3>{interest.title}</h3>
-                      <p>{interest.tracks}</p>
-                    </div>
-                  </InterestCard>
-                ))}
-              </InterestScroll>
-            </Section>
-          )}
-
-          {recentTracks?.length > 0 && (
-            <Section>
-              <h2>Ouvidas Recentemente</h2>
-              <RecentGrid>
-                {recentTracks.map(track => (
-                  <RecentCard key={track.id} onClick={() => handlePlayTrack(track)}>
                     <img 
                       src={track.image || getYouTubeThumbnail(track.id)}
                       alt={track.title} 
@@ -636,25 +639,25 @@ const Home = () => {
                         e.target.src = getYouTubeThumbnail(track.id, 'default')
                       }}
                     />
-                    <div className="info">
-                      <h3>{track.title}</h3>
-                      <p>{track.artist || 'YouTube Music'}</p>
-                    </div>
-                    <AiOutlinePlayCircle className="play-icon" />
-                  </RecentCard>
-                ))}
-              </RecentGrid>
-            </Section>
-          )}
-
-          {favorites?.length > 0 && (
-            <Section>
-              <h2>Favoritos</h2>
-              <TrackGrid>
-                {favorites.map(track => renderCard(track))}
-              </TrackGrid>
-            </Section>
-          )}
+                    <h3>{track.title}</h3>
+                    <p>{track.artist || 'YouTube Music'}</p>
+                    <PlayingIndicator className="playing-indicator">
+                      <AiFillPlayCircle /> Tocando
+                    </PlayingIndicator>
+                  </TrackCard>
+                ))
+              ) : (
+                <>
+                  <EmptyTrackCard>
+                    <AiOutlineHeart />
+                    <h3>Nenhuma música curtida</h3>
+                    <p>As músicas que você curtir aparecerão aqui</p>
+                  </EmptyTrackCard>
+                  <EmptyTrackCard />
+                </>
+              )}
+            </TrackGrid>
+          </Section>
         </>
       )}
     </HomeContainer>

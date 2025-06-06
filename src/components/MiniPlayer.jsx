@@ -1,8 +1,9 @@
-import React from 'react'
+import React, { useState } from 'react'
 import styled from 'styled-components'
 import { useNavigate } from 'react-router-dom'
 import { usePlayer } from '../contexts/PlayerContext'
-import { AiFillPlayCircle, AiFillPauseCircle, AiOutlineStepBackward, AiOutlineStepForward } from 'react-icons/ai'
+import { AiFillPlayCircle, AiFillPauseCircle, AiOutlineStepBackward, AiOutlineStepForward, AiOutlinePlus } from 'react-icons/ai'
+import AddToPlaylistModal from './AddToPlaylistModal'
 
 const Container = styled.div`
   position: fixed;
@@ -107,7 +108,7 @@ const ProgressBar = styled.div.attrs(props => ({
   left: 0;
   right: 0;
   height: 3px;
-  background: rgba(139, 92, 246, 0.2);
+  background: rgba(138, 92, 246, 0.95);
 
   &::after {
     content: '';
@@ -133,6 +134,7 @@ const ProgressBar = styled.div.attrs(props => ({
 
 const MiniPlayer = () => {
   const navigate = useNavigate()
+  const [showPlaylistModal, setShowPlaylistModal] = useState(false)
   const { 
     currentTrack,
     isPlaying,
@@ -158,39 +160,56 @@ const MiniPlayer = () => {
     togglePlay()
   }
 
+  const handleAddToPlaylist = (e) => {
+    e.stopPropagation()
+    setShowPlaylistModal(true)
+  }
+
   return (
-    <Container>
-      <ProgressBar $progress={progress} />
+    <>
+      <Container>
+        <ProgressBar $progress={progress} />
 
-      <TrackInfo onClick={() => navigate('/player', { state: { track: currentTrack } })}>
-        <img 
-          src={`https://img.youtube.com/vi/${currentTrack.id}/default.jpg`}
-          alt={currentTrack.title}
+        <TrackInfo onClick={() => navigate('/player', { state: { track: currentTrack } })}>
+          <img 
+            src={`https://img.youtube.com/vi/${currentTrack.id}/default.jpg`}
+            alt={currentTrack.title}
+          />
+          <div className="info">
+            <h3>{limitTitle(currentTrack.title)}</h3>
+            <p>YouTube Music</p>
+          </div>
+        </TrackInfo>
+
+        <Controls>
+          <button 
+            onClick={previousTrack}
+            disabled={!queue.length || currentQueueIndex === 0}
+          >
+            <AiOutlineStepBackward />
+          </button>
+          <button onClick={handlePlayPause} className="play-pause">
+            {isPlaying ? <AiFillPauseCircle /> : <AiFillPlayCircle />}
+          </button>
+          <button 
+            onClick={nextTrack}
+            disabled={!queue.length || currentQueueIndex === queue.length - 1}
+          >
+            <AiOutlineStepForward />
+          </button>
+          <button onClick={handleAddToPlaylist}>
+            <AiOutlinePlus />
+          </button>
+        </Controls>
+      </Container>
+
+      {showPlaylistModal && (
+        <AddToPlaylistModal
+          track={currentTrack}
+          onClose={() => setShowPlaylistModal(false)}
         />
-        <div className="info">
-          <h3>{limitTitle(currentTrack.title)}</h3>
-          <p>YouTube Music</p>
-        </div>
-      </TrackInfo>
-
-      <Controls>
-        <button 
-          onClick={previousTrack}
-          disabled={!queue.length || currentQueueIndex === 0}
-        >
-          <AiOutlineStepBackward />
-        </button>
-        <button onClick={handlePlayPause} className="play-pause">
-          {isPlaying ? <AiFillPauseCircle /> : <AiFillPlayCircle />}
-        </button>
-        <button 
-          onClick={nextTrack}
-          disabled={!queue.length || currentQueueIndex === queue.length - 1}
-        >
-          <AiOutlineStepForward />
-        </button>
-      </Controls>
-    </Container>
+      )}
+    </>
   )
 }
 

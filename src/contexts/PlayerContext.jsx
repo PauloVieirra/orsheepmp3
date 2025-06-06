@@ -13,7 +13,10 @@ export const PlayerProvider = ({ children }) => {
   const [duration, setDuration] = useState(0)
   const [currentPlaylist, setCurrentPlaylist] = useState(null)
   const [currentTrackIndex, setCurrentTrackIndex] = useState(-1)
-  const [autoPlay, setAutoPlay] = useState(false)
+  const [autoPlay, setAutoPlay] = useState(() => {
+    const savedAutoPlay = localStorage.getItem('autoPlay')
+    return savedAutoPlay ? JSON.parse(savedAutoPlay) : false
+  })
   const [shuffle, setShuffle] = useState(false)
   const [queue, setQueue] = useState([])
   const [currentQueueIndex, setCurrentQueueIndex] = useState(0)
@@ -34,12 +37,13 @@ export const PlayerProvider = ({ children }) => {
     setAutoPlay(settings?.autoPlay || false)
   }
 
-  const toggleAutoPlay = async (value) => {
-    const settings = await getSettings()
-    const newSettings = { ...settings, autoPlay: value }
-    await saveSettings(newSettings)
-    setAutoPlay(value)
-  }
+  const toggleAutoPlay = useCallback(() => {
+    setAutoPlay(prev => {
+      const newValue = !prev
+      localStorage.setItem('autoPlay', JSON.stringify(newValue))
+      return newValue
+    })
+  }, [])
 
   const handleProgress = useCallback(({ playedSeconds }) => {
     setCurrentTime(playedSeconds)

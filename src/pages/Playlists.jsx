@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import styled from 'styled-components'
 import { useNavigate } from 'react-router-dom'
 import PlaylistCard from '../components/PlaylistCard'
+import { useStorage } from '../contexts/StorageContext'
+import { AiOutlinePlus } from 'react-icons/ai'
 
 const PlaylistsContainer = styled.div`
   padding: 20px;
@@ -128,16 +130,29 @@ const Button = styled.button`
 
 const Playlists = () => {
   const navigate = useNavigate()
+  const { getPlaylists, savePlaylists } = useStorage()
   const [playlists, setPlaylists] = useState([])
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newPlaylistName, setNewPlaylistName] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const savedPlaylists = JSON.parse(localStorage.getItem('playlists') || '[]')
-    setPlaylists(savedPlaylists)
-  }, [])
+    const loadPlaylists = async () => {
+      try {
+        setIsLoading(true)
+        const savedPlaylists = await getPlaylists()
+        setPlaylists(savedPlaylists || [])
+      } catch (error) {
+        console.error('Erro ao carregar playlists:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
 
-  const handleCreatePlaylist = () => {
+    loadPlaylists()
+  }, [getPlaylists])
+
+  const handleCreatePlaylist = async () => {
     if (newPlaylistName.trim()) {
       const newPlaylist = {
         id: Date.now().toString(),
@@ -146,15 +161,32 @@ const Playlists = () => {
       }
 
       const updatedPlaylists = [...playlists, newPlaylist]
-      localStorage.setItem('playlists', JSON.stringify(updatedPlaylists))
-      setPlaylists(updatedPlaylists)
-      setNewPlaylistName('')
-      setShowCreateModal(false)
+      const success = await savePlaylists(updatedPlaylists)
+      
+      if (success) {
+        setPlaylists(updatedPlaylists)
+        setNewPlaylistName('')
+        setShowCreateModal(false)
+        alert('Playlist criada com sucesso!')
+      } else {
+        alert('Erro ao criar playlist. Tente novamente.')
+      }
     }
   }
 
   const handlePlaylistClick = (playlist) => {
     navigate('/playlist/' + playlist.id)
+  }
+
+  if (isLoading) {
+    return (
+      <PlaylistsContainer>
+        <Header>
+          <h1>Minhas Playlists</h1>
+          <p>Carregando...</p>
+        </Header>
+      </PlaylistsContainer>
+    )
   }
 
   return (
@@ -166,7 +198,7 @@ const Playlists = () => {
 
       <Grid>
         <CreatePlaylistButton onClick={() => setShowCreateModal(true)}>
-          <span>+</span>
+          <AiOutlinePlus />
           <span>Criar Nova Playlist</span>
         </CreatePlaylistButton>
         
@@ -174,7 +206,7 @@ const Playlists = () => {
           <PlaylistCard
             key={playlist.id}
             playlist={playlist}
-            onClick={handlePlaylistClick}
+            onClick={() => handlePlaylistClick(playlist)}
           />
         ))}
       </Grid>
@@ -189,6 +221,11 @@ const Playlists = () => {
               placeholder="Nome da playlist"
               value={newPlaylistName}
               onChange={(e) => setNewPlaylistName(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleCreatePlaylist()
+                }
+              }}
             />
             <Button $primary onClick={handleCreatePlaylist}>
               Criar

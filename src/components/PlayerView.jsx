@@ -4,8 +4,7 @@ import {
   AiFillPlayCircle, 
   AiFillPauseCircle, 
   AiOutlineStepBackward, 
-  AiOutlineStepForward, 
-  AiOutlineDownload, 
+  AiOutlineStepForward,
   AiOutlineSync,
   AiOutlineReload,
   AiOutlineRandom
@@ -72,13 +71,13 @@ const AddToPlaylistButton = styled.button`
   }
 `
 
-const DownloadButton = styled.button`
+const AutoPlayButton = styled.button`
   position: absolute;
   top: 20px;
   right: 120px;
   background: none;
   border: none;
-  color: white;
+  color: ${props => props.$active ? '#1db954' : 'white'};
   font-size: 1.5rem;
   cursor: pointer;
   padding: 8px;
@@ -137,7 +136,7 @@ const ControlButton = styled.button`
   background: none;
   border: none;
   color: white;
-  font-size: ${props => props.primary ? '4rem' : '2rem'};
+  font-size: ${props => props.$primary ? '4rem' : '2rem'};
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -168,22 +167,17 @@ const ExtraControls = styled.div`
 
 const ExtraButton = styled(ControlButton)`
   font-size: 1.5rem;
-  color: ${props => props.active ? '#1db954' : 'rgba(255, 255, 255, 0.7)'};
+  color: ${props => props.$active ? '#1db954' : 'rgba(255, 255, 255, 0.7)'};
   
   &:hover {
-    color: ${props => props.active ? '#1db954' : '#ffffff'};
+    color: ${props => props.$active ? '#1db954' : '#ffffff'};
   }
 `
 
-const AutoPlayButton = styled(ControlButton)`
-  position: absolute;
-  right: 20px;
-  font-size: 1.5rem;
-  color: ${props => props.active ? '#1db954' : 'rgba(255, 255, 255, 0.7)'};
-  
-  &:hover {
-    color: ${props => props.active ? '#1db954' : '#ffffff'};
-  }
+const Progress = styled.div`
+  height: 100%;
+  background: #1db954;
+  border-radius: 2px;
 `
 
 const ProgressBar = styled.div`
@@ -196,18 +190,11 @@ const ProgressBar = styled.div`
   margin: 20px 0;
 `
 
-const Progress = styled.div`
-  height: 100%;
-  background: #1db954;
-  border-radius: 2px;
-  transition: width 0.1s linear;
-`
-
 const TimeDisplay = styled.div`
   display: flex;
   justify-content: space-between;
   color: rgba(255, 255, 255, 0.7);
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   margin-top: 8px;
 `
 
@@ -221,93 +208,69 @@ const Overlay = styled.div`
   z-index: 2000;
 `
 
-const PlaylistQueue = styled.div`
-  margin: 20px 0;
-  padding: 0 20px;
-  overflow-y: auto;
-  max-height: 300px;
-
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 4px;
-  }
-`
-
-const QueueItem = styled.div`
-  display: flex;
-  align-items: center;
-  padding: 12px;
-  margin: 4px 0;
-  border-radius: 4px;
-  cursor: pointer;
-  color: ${props => props.active ? '#1db954' : 'white'};
-  background: ${props => props.active ? 'rgba(29, 185, 84, 0.1)' : 'transparent'};
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .title {
-    font-weight: ${props => props.active ? 'bold' : 'normal'};
-    margin-bottom: 4px;
-  }
-
-  .artist {
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.7);
-  }
-`
-
-const PlaylistModal = styled.div`
+const Modal = styled.div`
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   background: #282828;
-  padding: 16px;
+  padding: 24px;
   border-radius: 8px;
-  width: 100%;
-  overflow-y: auto;
+  width: 300px;
   z-index: 2001;
 
   h3 {
     margin: 0 0 16px;
     color: white;
+    text-align: center;
+  }
+`
+
+const PlaylistModal = styled(Modal)`
+  .playlist-list {
+    max-height: 300px;
+    overflow-y: auto;
   }
 `
 
 const PlaylistItem = styled.div`
+  display: flex;
+  align-items: center;
   padding: 12px;
-  border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
-  color: white;
-
+  border-radius: 4px;
+  
   &:hover {
     background: rgba(255, 255, 255, 0.1);
   }
-`
-
-const DownloadModal = styled(PlaylistModal)``
-const DownloadButtonGroup = styled.div`
-  display: flex;
-  justify-content: space-between;
-  margin-top: 16px;
+  
+  img {
+    width: 48px;
+    height: 48px;
+    border-radius: 4px;
+    margin-right: 12px;
+  }
+  
+  .info {
+    flex: 1;
+    
+    h4 {
+      margin: 0;
+      font-size: 1rem;
+      color: white;
+    }
+    
+    p {
+      margin: 4px 0 0;
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
+  }
 `
 
 const PlayerView = ({ onClose }) => {
   const [showPlaylistModal, setShowPlaylistModal] = useState(false)
-  const [showDownloadModal, setShowDownloadModal] = useState(false)
-
   const { 
     currentTrack: track,
     isPlaying,
@@ -317,8 +280,6 @@ const PlayerView = ({ onClose }) => {
     seekTo: onSeek,
     previousTrack: onPrevious,
     nextTrack: onNext,
-    getPlaylists,
-    addToPlaylist,
     currentPlaylist,
     currentTrackIndex,
     playTrack,
@@ -328,8 +289,6 @@ const PlayerView = ({ onClose }) => {
     toggleShuffle,
     restartTrack
   } = usePlayer()
-  
-  const playlists = getPlaylists()
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60)
@@ -337,27 +296,15 @@ const PlayerView = ({ onClose }) => {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const handleAddToPlaylist = (playlistId) => {
-    addToPlaylist(track, playlistId)
+  const handleAddToPlaylist = (playlist) => {
+    // Implementar adição à playlist
     setShowPlaylistModal(false)
-  }
-
-  const handleDownload = () => {
-    const audioUrl = track.audioUrl  // Certifique-se de que seu objeto track tem a URL do áudio aqui
-    const link = document.createElement('a')
-    link.href = audioUrl
-    link.download = `${track.title}.mp3`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    setShowDownloadModal(false)
   }
 
   return (
     <PlayerViewContainer>
       <CloseButton onClick={onClose}><IoMdClose /></CloseButton>
       <AddToPlaylistButton onClick={() => setShowPlaylistModal(true)}><MdPlaylistAdd /></AddToPlaylistButton>
-      <DownloadButton onClick={() => setShowDownloadModal(true)}><AiOutlineDownload /></DownloadButton>
 
       <CoverArt>
         <img src={`https://img.youtube.com/vi/${track.id}/maxresdefault.jpg`} alt={track.title} />
@@ -377,28 +324,11 @@ const PlayerView = ({ onClose }) => {
         <span>{formatTime(duration)}</span>
       </TimeDisplay>
 
-      {currentPlaylist && (
-        <PlaylistQueue>
-          {currentPlaylist.tracks.map((track, index) => (
-            <QueueItem
-              key={track.id}
-              active={index === currentTrackIndex}
-              onClick={() => playTrack(track)}
-            >
-              <div>
-                <div className="title">{track.title}</div>
-                <div className="artist">{track.artist}</div>
-              </div>
-            </QueueItem>
-          ))}
-        </PlaylistQueue>
-      )}
-
       <Controls>
         <ControlButton onClick={onPrevious} disabled={!currentPlaylist || currentTrackIndex === 0}>
           <AiOutlineStepBackward />
         </ControlButton>
-        <ControlButton primary onClick={onTogglePlay}>
+        <ControlButton $primary onClick={onTogglePlay}>
           {isPlaying ? <AiFillPauseCircle /> : <AiFillPlayCircle />}
         </ControlButton>
         <ControlButton onClick={onNext} disabled={!currentPlaylist || currentTrackIndex === currentPlaylist?.tracks.length - 1}>
@@ -409,10 +339,14 @@ const PlayerView = ({ onClose }) => {
           <ExtraButton onClick={restartTrack} title="Reiniciar música">
             <AiOutlineReload />
           </ExtraButton>
-          <ExtraButton onClick={toggleShuffle} active={shuffle} title="Reprodução aleatória">
+          <ExtraButton onClick={toggleShuffle} $active={shuffle} title="Reprodução aleatória">
             <AiOutlineRandom />
           </ExtraButton>
-          <ExtraButton onClick={toggleAutoPlay} active={autoPlay} title="Reprodução automática">
+          <ExtraButton 
+            onClick={toggleAutoPlay} 
+            $active={autoPlay} 
+            title={autoPlay ? "Desativar reprodução automática" : "Ativar reprodução automática"}
+          >
             <AiOutlineSync />
           </ExtraButton>
         </ExtraControls>
@@ -423,28 +357,20 @@ const PlayerView = ({ onClose }) => {
           <Overlay onClick={() => setShowPlaylistModal(false)} />
           <PlaylistModal>
             <h3>Adicionar à Playlist</h3>
-            {playlists.map(playlist => (
-              <PlaylistItem
-                key={playlist.id}
-                onClick={() => handleAddToPlaylist(playlist.id)}
-              >
-                {playlist.name}
-              </PlaylistItem>
-            ))}
+            <div className="playlist-list">
+              {currentPlaylist?.tracks.map(track => (
+                <PlaylistItem key={track.id} onClick={() => handleAddToPlaylist(track)}>
+                  <img 
+                    src={`https://img.youtube.com/vi/${track.id}/default.jpg`} 
+                    alt={track.title}
+                  />
+                  <div className="info">
+                    <h4>{track.title}</h4>
+                  </div>
+                </PlaylistItem>
+              ))}
+            </div>
           </PlaylistModal>
-        </>
-      )}
-
-      {showDownloadModal && (
-        <>
-          <Overlay onClick={() => setShowDownloadModal(false)} />
-          <DownloadModal>
-            <h3>Deseja fazer o download?</h3>
-            <DownloadButtonGroup>
-              <button onClick={handleDownload}>Sim</button>
-              <button onClick={() => setShowDownloadModal(false)}>Não</button>
-            </DownloadButtonGroup>
-          </DownloadModal>
         </>
       )}
     </PlayerViewContainer>

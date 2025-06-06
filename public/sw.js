@@ -110,13 +110,15 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('message', async (event) => {
   if (event.data && event.data.type === 'BACKGROUND_AUDIO') {
     try {
-      const permission = await self.registration.pushManager.permissionState({ userVisibleOnly: true });
+      const { title, playing } = event.data.payload;
       
-      if (permission === 'granted') {
+      if (playing) {
+        // Atualiza ou cria a notificação
         await self.registration.showNotification('OrSheep Music Player', {
-          body: 'Música em reprodução',
+          body: `Reproduzindo: ${title}`,
           icon: '/icon-512x512.svg',
           tag: 'background-playback',
+          silent: true,
           actions: [
             {
               action: 'pause',
@@ -126,43 +128,38 @@ self.addEventListener('message', async (event) => {
               action: 'next',
               title: 'Próxima'
             }
-          ]
+          ],
+          // Garante que a notificação não será fechada automaticamente
+          requireInteraction: true
         });
+      } else {
+        // Remove a notificação quando a música é pausada
+        const notifications = await self.registration.getNotifications({
+          tag: 'background-playback'
+        });
+        notifications.forEach(notification => notification.close());
       }
     } catch (error) {
-      console.error('Erro ao mostrar notificação:', error);
+      console.error('Erro ao gerenciar notificação:', error);
     }
   }
 });
 
-// Manipula cliques nas notificações
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
+// Manipula ações da notificação
+self.addEventListener('notificationclick', async (event) => {
+  const { action } = event;
+  const clients = await self.clients.matchAll({
+    type: 'window'
+  });
 
-  if (event.action === 'pause') {
-    // Envia mensagem para pausar a música
-    self.clients.matchAll().then((clients) => {
-      clients.forEach((client) => {
-        client.postMessage({ type: 'PAUSE_MUSIC' });
-      });
+  // Envia a ação para todos os clientes
+  clients.forEach(client => {
+    client.postMessage({
+      type: 'NOTIFICATION_ACTION',
+      action
     });
-  } else if (event.action === 'next') {
-    // Envia mensagem para próxima música
-    self.clients.matchAll().then((clients) => {
-      clients.forEach((client) => {
-        client.postMessage({ type: 'NEXT_MUSIC' });
-      });
-    });
-  } else {
-    // Clique na notificação principal
-    event.waitUntil(
-      clients.matchAll({ type: 'window' }).then((clientList) => {
-        if (clientList.length > 0) {
-          clientList[0].focus();
-        } else {
-          clients.openWindow('/');
-        }
-      })
-    );
-  }
+  });
+
+  // Fecha a notificação atual
+  event.notification.close();
 });

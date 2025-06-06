@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import styled from 'styled-components'
+import { useStorage } from '../contexts/StorageContext'
 
 const Modal = styled.div`
   position: fixed;
@@ -110,13 +111,20 @@ const Input = styled.input`
 `
 
 const AddToPlaylistModal = ({ track, onClose }) => {
-  const [playlists, setPlaylists] = useState(() => {
-    return JSON.parse(localStorage.getItem('playlists') || '[]')
-  })
+  const { getPlaylists, savePlaylists } = useStorage()
+  const [playlists, setPlaylists] = useState([])
   const [newPlaylistName, setNewPlaylistName] = useState('')
   const [showNewPlaylistInput, setShowNewPlaylistInput] = useState(false)
 
-  const handleAddToPlaylist = (playlist) => {
+  useEffect(() => {
+    const loadPlaylists = async () => {
+      const savedPlaylists = await getPlaylists()
+      setPlaylists(savedPlaylists || [])
+    }
+    loadPlaylists()
+  }, [getPlaylists])
+
+  const handleAddToPlaylist = async (playlist) => {
     // Verificar se a música já está na playlist
     if (!playlist.tracks.some(t => t.id === track.id)) {
       const updatedPlaylist = {
@@ -128,16 +136,20 @@ const AddToPlaylistModal = ({ track, onClose }) => {
         p.id === playlist.id ? updatedPlaylist : p
       )
 
-      localStorage.setItem('playlists', JSON.stringify(updatedPlaylists))
-      setPlaylists(updatedPlaylists)
-      alert('Música adicionada à playlist!')
+      const success = await savePlaylists(updatedPlaylists)
+      if (success) {
+        setPlaylists(updatedPlaylists)
+        alert('Música adicionada à playlist!')
+      } else {
+        alert('Erro ao adicionar música à playlist. Tente novamente.')
+      }
     } else {
       alert('Esta música já está na playlist!')
     }
     onClose()
   }
 
-  const handleCreatePlaylist = () => {
+  const handleCreatePlaylist = async () => {
     if (newPlaylistName.trim()) {
       const newPlaylist = {
         id: Date.now().toString(),
@@ -146,10 +158,15 @@ const AddToPlaylistModal = ({ track, onClose }) => {
       }
 
       const updatedPlaylists = [...playlists, newPlaylist]
-      localStorage.setItem('playlists', JSON.stringify(updatedPlaylists))
-      setPlaylists(updatedPlaylists)
-      alert('Playlist criada com sucesso!')
-      onClose()
+      const success = await savePlaylists(updatedPlaylists)
+      
+      if (success) {
+        setPlaylists(updatedPlaylists)
+        alert('Playlist criada com sucesso!')
+        onClose()
+      } else {
+        alert('Erro ao criar playlist. Tente novamente.')
+      }
     }
   }
 

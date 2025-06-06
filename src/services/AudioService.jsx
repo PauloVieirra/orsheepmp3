@@ -6,6 +6,7 @@ class AudioService {
     this.wakeLock = null
     this.audioContext = null
     this.onStateChange = null
+    this.backgroundPlayEnabled = false
   }
 
   async initialize() {
@@ -19,14 +20,40 @@ class AudioService {
 
     // Configura handlers para eventos do sistema
     this.setupSystemEvents()
+
+    // Carrega a configuração de reprodução em segundo plano
+    this.loadBackgroundPlaySettings()
+  }
+
+  loadBackgroundPlaySettings() {
+    try {
+      const settings = JSON.parse(localStorage.getItem('appSettings') || '{}')
+      this.backgroundPlayEnabled = settings.backgroundPlay ?? true
+    } catch (error) {
+      console.error('Erro ao carregar configurações:', error)
+      this.backgroundPlayEnabled = true
+    }
   }
 
   async requestWakeLock() {
-    if ('wakeLock' in navigator) {
+    if ('wakeLock' in navigator && this.backgroundPlayEnabled) {
       try {
         this.wakeLock = await navigator.wakeLock.request('screen')
+        console.log('Wake Lock ativado')
       } catch (err) {
         console.log('Wake Lock não suportado:', err)
+      }
+    }
+  }
+
+  async releaseWakeLock() {
+    if (this.wakeLock) {
+      try {
+        await this.wakeLock.release()
+        this.wakeLock = null
+        console.log('Wake Lock liberado')
+      } catch (err) {
+        console.error('Erro ao liberar Wake Lock:', err)
       }
     }
   }
@@ -34,8 +61,24 @@ class AudioService {
   setupSystemEvents() {
     // Reconecta o wakeLock quando a tela é reativada
     document.addEventListener('visibilitychange', async () => {
-      if (document.visibilityState === 'visible' && !this.wakeLock) {
-        await this.requestWakeLock()
+      if (this.backgroundPlayEnabled) {
+        if (document.visibilityState === 'visible' && !this.wakeLock) {
+          await this.requestWakeLock()
+        } else if (document.visibilityState === 'hidden') {
+          // Mantém a reprodução em segundo plano
+          if (this.player && this.player.isPlaying()) {
+            // Notifica o service worker
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+              navigator.serviceWorker.controller.postMessage({
+                type: 'BACKGROUND_AUDIO',
+                payload: { 
+                  title: this.player.getCurrentTrack()?.title,
+                  playing: true
+                }
+              })
+            }
+          }
+        }
       }
     })
 
@@ -53,6 +96,27 @@ class AudioService {
       navigator.mediaSession.setActionHandler('nexttrack', () => {
         this.onStateChange?.({ type: 'next' })
       })
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        this.onStateChange?.({ type: 'seek', time: details.seekTime })
+      })
+    }
+  }
+
+  setBackgroundPlayEnabled(enabled) {
+    this.backgroundPlayEnabled = enabled
+    if (enabled) {
+      this.requestWakeLock()
+    } else {
+      this.releaseWakeLock()
+    }
+
+    // Salva a configuração
+    try {
+      const settings = JSON.parse(localStorage.getItem('appSettings') || '{}')
+      settings.backgroundPlay = enabled
+      localStorage.setItem('appSettings', JSON.stringify(settings))
+    } catch (error) {
+      console.error('Erro ao salvar configurações:', error)
     }
   }
 
@@ -64,28 +128,31 @@ class AudioService {
     this.onStateChange = callback
   }
 
-  updateMediaInfo(track, isPlaying) {
-    if (track) {
-      setupMediaSession({
+  updateMediaInfo(track, playing) {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
         title: track.title,
-        artist: 'YouTube Music',
-        artwork: `https://img.youtube.com/vi/${track.id}/maxresdefault.jpg`,
-        onPlay: () => this.onStateChange?.({ type: 'play' }),
-        onPause: () => this.onStateChange?.({ type: 'pause' }),
-        onPrevious: () => this.onStateChange?.({ type: 'previous' }),
-        onNext: () => this.onStateChange?.({ type: 'next' }),
-        onSeekTo: ({ seekTime }) => this.onStateChange?.({ type: 'seek', time: seekTime })
+        artist: 'OrSheep Music',
+        artwork: [
+          {
+            src: `https://img.youtube.com/vi/${track.id}/maxresdefault.jpg`,
+            sizes: '1280x720',
+            type: 'image/jpeg'
+          }
+        ]
       })
-      updateMediaSessionState(isPlaying ? 'playing' : 'paused')
+      navigator.mediaSession.playbackState = playing ? 'playing' : 'paused'
     }
   }
 
   updatePosition(currentTime, duration) {
-    updatePositionState({
-      duration,
-      currentTime,
-      playbackRate: 1
-    })
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.setPositionState({
+        duration,
+        playbackRate: 1,
+        position: currentTime
+      })
+    }
   }
 
   cleanup() {
@@ -100,4 +167,6 @@ class AudioService {
   }
 }
 
-export default new AudioService() 
+// Exporta uma única instância
+const audioService = new AudioService()
+export default audioService 

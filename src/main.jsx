@@ -4,9 +4,6 @@ import App from './App'
 import { createGlobalStyle } from 'styled-components'
 import { registerServiceWorker } from './registerSW'
 import { BrowserRouter } from 'react-router-dom'
-import { PlayerProvider } from './contexts/PlayerContext'
-import { StorageProvider } from './contexts/StorageContext'
-import { ApiKeyProvider } from './contexts/ApiKeyContext'
 
 const GlobalStyle = createGlobalStyle`
   * {
@@ -41,13 +38,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <GlobalStyle />
     <BrowserRouter>
-      <ApiKeyProvider>
-        <StorageProvider>
-          <PlayerProvider>
-            <App />
-          </PlayerProvider>
-        </StorageProvider>
-      </ApiKeyProvider>
+      <App />
     </BrowserRouter>
   </React.StrictMode>
 )

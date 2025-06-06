@@ -9,6 +9,7 @@ import { BiCheck } from 'react-icons/bi'
 import { MdOutlineStorage } from 'react-icons/md'
 import { IoArrowBack } from 'react-icons/io5'
 import { FaQuoteLeft } from 'react-icons/fa'
+import audioService from '../services/AudioService'
 
 const Container = styled.div`
   padding: 20px;
@@ -488,11 +489,17 @@ const SocialLinks = styled.div`
 
 const Settings = () => {
   const navigate = useNavigate()
-  const { autoPlay, toggleAutoPlay } = usePlayer()
   const { clearCache } = useStorage()
   const { apiKey, updateApiKey, isLoading } = useApiKey()
   const [offlineMode, setOfflineMode] = useState(false)
-  const [backgroundPlay, setBackgroundPlay] = useState(true)
+  const [backgroundPlay, setBackgroundPlay] = useState(() => {
+    try {
+      const settings = JSON.parse(localStorage.getItem('appSettings') || '{}')
+      return settings.backgroundPlay ?? true
+    } catch {
+      return true
+    }
+  })
   const [storageUsage, setStorageUsage] = useState(null)
   const [isClearing, setIsClearing] = useState(false)
   const [showClearModal, setShowClearModal] = useState(false)
@@ -552,7 +559,7 @@ const Settings = () => {
   const handleToggleBackgroundPlay = () => {
     const newValue = !backgroundPlay
     setBackgroundPlay(newValue)
-    saveSettings({ backgroundPlay: newValue })
+    audioService.setBackgroundPlayEnabled(newValue)
   }
 
   const saveSettings = (newSettings) => {
@@ -617,23 +624,8 @@ const Settings = () => {
         </h2>
         <SettingItem>
           <div className="setting-info">
-            <h3>Reprodução Automática</h3>
-            <p>Reproduz automaticamente a próxima música da playlist</p>
-          </div>
-          <Switch 
-            $active={autoPlay} 
-            onClick={toggleAutoPlay}
-            aria-label="Alternar reprodução automática"
-          >
-            <span style={{ display: 'none' }}>
-              {autoPlay ? 'Desativar' : 'Ativar'} reprodução automática
-            </span>
-          </Switch>
-        </SettingItem>
-        <SettingItem>
-          <div className="setting-info">
             <h3>Reprodução em segundo plano</h3>
-            <p>Mantém a música tocando quando o app está minimizado</p>
+            <p>Mantém a música tocando quando o app está minimizado ou bloqueado</p>
           </div>
           <Switch 
             $active={backgroundPlay} 

@@ -143,7 +143,8 @@ const Playlist = () => {
     autoPlay,
     nextTrack,
     previousTrack,
-    onEnded
+    onEnded,
+    playPlaylist
   } = usePlayer()
   const [playlist, setPlaylist] = useState(null)
   const [offlineTracks, setOfflineTracks] = useState([])
@@ -158,6 +159,9 @@ const Playlist = () => {
     const currentPlaylist = playlists.find(p => p.id === id)
     if (currentPlaylist) {
       setPlaylist(currentPlaylist)
+      if (currentPlaylist.tracks.length > 0) {
+        playPlaylist(currentPlaylist)
+      }
     } else {
       navigate('/playlists')
     }
