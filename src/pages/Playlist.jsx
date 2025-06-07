@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
 import { usePlayer } from '../contexts/PlayerContext'
 import { useStorage } from '../contexts/StorageContext'
-import { AiOutlineArrowLeft, AiOutlineDelete, AiOutlineEdit } from 'react-icons/ai'
+import { AiOutlineArrowLeft, AiOutlineDelete, AiOutlineEdit, AiOutlineClose } from 'react-icons/ai'
 import DownloadService from '../services/DownloadService'
 
 const Container = styled.div`
@@ -100,6 +100,24 @@ const TrackItem = styled.div`
     margin-left: 12px;
     color: #8B5CF6;
   }
+
+  .remove-track {
+    opacity: 1;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 8px;
+    cursor: ${props => props.$active ? 'not-allowed' : 'pointer'};
+    transition: all 0.2s;
+    margin-left: 8px;
+    pointer-events: ${props => props.$active ? 'none' : 'auto'};
+
+    &:hover {
+      color: #EF4444;
+      background: rgba(239, 68, 68, 0.1);
+      border-radius: 50%;
+    }
+  }
 `
 
 const Actions = styled.div`
@@ -136,16 +154,7 @@ const Playlist = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const { getPlaylists, savePlaylists } = useStorage()
-  const { 
-    currentTrack, 
-    playTrack, 
-    isPlaying,
-    autoPlay,
-    nextTrack,
-    previousTrack,
-    onEnded,
-    playPlaylist
-  } = usePlayer()
+  const { currentTrack, isPlaying, removeTrackFromPlaylist } = usePlayer()
   const [playlist, setPlaylist] = useState(null)
   const [offlineTracks, setOfflineTracks] = useState([])
 
@@ -159,9 +168,6 @@ const Playlist = () => {
     const currentPlaylist = playlists.find(p => p.id === id)
     if (currentPlaylist) {
       setPlaylist(currentPlaylist)
-      if (currentPlaylist.tracks.length > 0) {
-        playPlaylist(currentPlaylist)
-      }
     } else {
       navigate('/playlists')
     }
@@ -173,8 +179,14 @@ const Playlist = () => {
   }
 
   const handlePlayTrack = (track, index) => {
-    const playlistTracks = [...playlist.tracks]
-    playTrack(track, true, playlistTracks, index)
+    navigate('/player', { 
+      state: { 
+        track,
+        playlist: playlist,
+        currentIndex: index,
+        fromPlaylist: true
+      }
+    })
   }
 
   const handleDeletePlaylist = async () => {
@@ -191,12 +203,33 @@ const Playlist = () => {
   }
 
   const handleTrackEnd = () => {
-    if (autoPlay && playlist) {
-      const currentIndex = playlist.tracks.findIndex(track => track.id === currentTrack?.id)
-      if (currentIndex < playlist.tracks.length - 1) {
-        handlePlayTrack(playlist.tracks[currentIndex + 1], currentIndex + 1)
+    // Implementar lógica para quando uma música termina
+  }
+
+  const handleRemoveTrack = async (event, trackIndex) => {
+    event.stopPropagation()
+    
+    const trackToRemove = playlist.tracks[trackIndex]
+    
+    // Verifica se a música está em reprodução
+    if (currentTrack?.id === trackToRemove.id && isPlaying) {
+      alert('Não é possível remover uma música que está em reprodução.')
+      return
+    }
+    
+    if (window.confirm('Tem certeza que deseja remover esta música da playlist?')) {
+      const updatedPlaylists = await removeTrackFromPlaylist(trackToRemove.id, playlist.id)
+      
+      if (updatedPlaylists) {
+        const updatedPlaylist = updatedPlaylists.find(p => p.id === playlist.id)
+        setPlaylist(updatedPlaylist)
       }
     }
+  }
+
+  const handleTrackClick = (event, trackIndex) => {
+    event.stopPropagation()
+    handleRemoveTrack(event, trackIndex)
   }
 
   if (!playlist) return null
@@ -214,27 +247,37 @@ const Playlist = () => {
       </Header>
 
       <TrackList>
-        {playlist.tracks.map((track, index) => (
-          <TrackItem
-            key={`${track.id}-${index}`}
-            onClick={() => handlePlayTrack(track, index)}
-            $active={currentTrack?.id === track.id}
-          >
-            <img
-              src={`https://img.youtube.com/vi/${track.id}/default.jpg`}
-              alt={track.title}
-            />
-            <div className="track-info">
-              <h3>{track.title}</h3>
-              <p>YouTube Music</p>
-            </div>
-            {currentTrack?.id === track.id && isPlaying && (
-              <div className="playing-indicator">
-                🎵
+        {playlist.tracks.map((track, index) => {
+          const isPlaying = currentTrack?.id === track.id
+          return (
+            <TrackItem
+              key={`${track.id}-${index}`}
+              onClick={(e) => handleTrackClick(e, index)}
+              $active={isPlaying}
+            >
+              <img
+                src={`https://img.youtube.com/vi/${track.id}/default.jpg`}
+                alt={track.title}
+              />
+              <div className="track-info">
+                <h3>{track.title}</h3>
+                <p>YouTube Music</p>
               </div>
-            )}
-          </TrackItem>
-        ))}
+              {isPlaying && (
+                <div className="playing-indicator">
+                  🎵
+                </div>
+              )}
+              <button 
+                className="remove-track"
+                onClick={(e) => handleRemoveTrack(e, index)}
+                title={isPlaying ? "Não é possível remover uma música em reprodução" : "Remover música"}
+              >
+                <AiOutlineClose />
+              </button>
+            </TrackItem>
+          )
+        })}
       </TrackList>
 
       <Actions>

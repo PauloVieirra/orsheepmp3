@@ -456,7 +456,7 @@ const MusicPlayer = () => {
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('Música em Reprodução', {
           body: `Reproduzindo: ${currentTrack.title}`,
-          icon: '/icon-192x192.svg',
+          icon: '/logo.png',
           tag: 'background-playback',
           silent: true
         });

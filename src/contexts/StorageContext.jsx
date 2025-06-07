@@ -32,6 +32,10 @@ const stores = {
   thumbnails: localforage.createInstance({
     name: 'orsheepUI',
     storeName: 'thumbnails'
+  }),
+  settings: localforage.createInstance({
+    name: 'orsheepUI',
+    storeName: 'settings'
   })
 };
 
@@ -150,6 +154,28 @@ export const StorageProvider = ({ children }) => {
     }
   };
 
+  const getSettings = useCallback(async () => {
+    if (!isInitialized) return {};
+    try {
+      const settings = await stores.settings.getItem('settings');
+      return settings || {};
+    } catch (error) {
+      console.error('Erro ao carregar configurações:', error);
+      return {};
+    }
+  }, [isInitialized]);
+
+  const saveSettings = useCallback(async (settings) => {
+    if (!isInitialized) return false;
+    try {
+      await stores.settings.setItem('settings', settings);
+      return true;
+    } catch (error) {
+      console.error('Erro ao salvar configurações:', error);
+      return false;
+    }
+  }, [isInitialized]);
+
   const value = {
     savePlaylists,
     getPlaylists,
@@ -157,8 +183,10 @@ export const StorageProvider = ({ children }) => {
     getRecentTracks,
     saveFavoriteTracks,
     getFavoriteTracks,
+    getSettings,
+    saveSettings,
     isInitialized,
-    playlistsVersion // Adiciona a versão ao contexto
+    playlistsVersion
   };
 
   return (

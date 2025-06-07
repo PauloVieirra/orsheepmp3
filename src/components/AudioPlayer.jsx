@@ -13,7 +13,7 @@ const HiddenPlayer = styled.div`
 `
 
 const AudioPlayer = () => {
-  const { currentTrack, onPlayerReady, onPlayerStateChange } = usePlayer()
+  const { currentTrack, onPlayerReady, onPlayerStateChange, handlePlayerError } = usePlayer()
 
   if (!currentTrack) return null
 
@@ -23,6 +23,7 @@ const AudioPlayer = () => {
         videoId={currentTrack.id}
         onReady={onPlayerReady}
         onStateChange={onPlayerStateChange}
+        onError={handlePlayerError}
       />
     </HiddenPlayer>
   )

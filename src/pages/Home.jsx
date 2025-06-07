@@ -523,25 +523,34 @@ const Home = () => {
     <HomeContainer>
       <InstallPWA />
       {!apiKey ? (
-        <WelcomeCard>
-          <h2>🎵 Orsheep Music Player</h2>
-          <div className="subtitle">Sua Jornada Musical com IA e Design Moderno</div>
-          
-          <div className="description">
-            Olá! Me chamo Paulo Vieira, sou UX-UI Design e Programador front-end. No momento estou 
-            cursando uma graduação em desenvolvimento mobile. Sou muito curioso, apaixonado por 
-            inovação e tecnologia.
-            <br /><br />
-            O Orsheep Music Player é um projeto inovador que combina o melhor do UX/UI Design com 
-            tecnologias modernas como React.js e armazenamento local IndexedDB via LocalForage. 
-            Nossa interface foi cuidadosamente projetada para proporcionar uma experiência musical 
-            única e intuitiva.
-            <br /><br />
-            Este projeto foi desenvolvido como exercício de aprendizagem, validando a utilidade das 
-            ferramentas de IA para facilitar o trabalho de design de interfaces e experiência do 
-            usuário.
-          </div>
-        </WelcomeCard>
+       <WelcomeCard>
+       <h2>🎵 Orsheep Music Player</h2>
+       <div className="subtitle">Configure sua chave da API do YouTube e comece a usar</div>
+       
+       <div className="description">
+         Para começar a usar o Orsheep Music Player, você precisa realizar uma configuração simples e rápida:
+     
+         <br /><br />
+     
+         1. Acesse o site <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a> e crie uma conta (caso ainda não tenha uma).  
+         2. Crie um novo projeto e ative a API YouTube Data v3.  
+         3. Em seguida, gere uma **chave de API**.  
+         4. Copie essa chave e cole na <strong>página de configurações do aplicativo</strong>.
+     
+         <br /><br />
+     
+         Pronto! Agora o aplicativo já está funcionando 🎶
+     
+         <br /><br />
+     
+         A API do YouTube possui uma **cota diária gratuita**, que é suficiente para um uso moderado de buscas por vídeos e músicas. Caso ultrapasse a cota, as consultas podem ser temporariamente limitadas até o próximo dia.
+     
+         <br /><br />
+     
+         Se precisar de ajuda, estamos por aqui para ajudar você a aproveitar ao máximo sua experiência musical com o Orsheep.
+       </div>
+     </WelcomeCard>
+     
       ) : (
         <>
           <WelcomeSection>

@@ -8,7 +8,7 @@ import { AiOutlineInfoCircle, AiOutlineEye, AiOutlineEyeInvisible, AiOutlineLink
 import { BiCheck } from 'react-icons/bi'
 import { MdOutlineStorage } from 'react-icons/md'
 import { IoArrowBack } from 'react-icons/io5'
-import { FaQuoteLeft } from 'react-icons/fa'
+import { FaQuoteLeft, FaQuoteRight } from 'react-icons/fa'
 import audioService from '../services/AudioService'
 
 const Container = styled.div`
@@ -773,14 +773,11 @@ const Settings = () => {
       )}
 
       <AboutSection>
-        <ProfileImage 
-          src="https://media.licdn.com/dms/image/v2/C4E03AQG6lXXbkrXMhA/profile-displayphoto-shrink_400_400/profile-displayphoto-shrink_400_400/0/1654171617626?e=1754524800&v=beta&t=Qu8hlbMFRI9y89jceYuoVbNc7PBk152ZyphVCyKDQ5I"
-          alt="Paulo Vieira"
-        />
+       
         
         <AboutText>
           <p>
-            Oi, me chamo Paulo Vieira, sou UX/UI Designer.
+           
           </p>
           <p>
             Esse trabalho foi desenvolvido como caso de estudo, unindo UI Design com Inteligência 
@@ -796,8 +793,9 @@ const Settings = () => {
         </AboutText>
 
         <Quote>
-          <FaQuoteLeft />
+         
           "O bom design é aquele que comunica claramente sua função."
+         
           <br />— Donald Norman
         </Quote>
 
