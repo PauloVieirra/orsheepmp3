@@ -519,7 +519,8 @@ export const PlayerProvider = ({ children }) => {
     changeVolume,
     removeTrack,
     handlePlayerError,
-    removeTrackFromPlaylist
+    removeTrackFromPlaylist,
+    hasQueue: queue.length > 1
   }
   
   return (

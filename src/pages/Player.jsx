@@ -214,54 +214,33 @@ const TimeInfo = styled.div`
 
 const AdditionalControls = styled.div`
   display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 16px;
-  margin-top: 16px;
-  width: 100%;
+  gap: 24px;
+  margin-bottom: 32px;
 
   button {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
     background: none;
     border: none;
     color: white;
     cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 1.5rem;
     transition: all 0.2s;
-    padding: 8px 8px;
-    border-radius: 8px;
 
-    svg {
-      font-size: 1.5rem;
+    &:hover {
+      color: #8B5CF6;
     }
 
     span {
       font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.7);
     }
 
-    &:hover {
-      background: rgba(139, 92, 246, 0.1);
+    &[data-active="true"] {
       color: #8B5CF6;
-
-      span {
-        color: #8B5CF6;
-      }
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-
-      &:hover {
-        background: none;
-        color: white;
-
-        span {
-          color: rgba(255, 255, 255, 0.7);
-        }
-      }
     }
   }
 `
@@ -423,7 +402,10 @@ const PlayerPage = () => {
     queue,
     setQueue,
     currentQueueIndex,
-    playTrack
+    playTrack,
+    hasQueue,
+    autoPlay,
+    toggleAutoPlay
   } = usePlayer()
   const { getFavoriteTracks, saveFavoriteTracks } = useStorage()
   const [isFavorite, setIsFavorite] = useState(false)
@@ -432,7 +414,6 @@ const PlayerPage = () => {
   const [isDownloaded, setIsDownloaded] = useState(false)
   const [playerReady, setPlayerReady] = useState(false)
   const fromHome = location.state?.fromHome
-  const hasQueue = queue.length > 1
 
   useEffect(() => {
     if (state?.queue && state?.currentQueueIndex !== undefined) {
@@ -597,24 +578,34 @@ const PlayerPage = () => {
             </Controls>
 
             <AdditionalControls>
-              <button onClick={handleToggleFavorite}>
-                {isFavorite ? <AiFillHeart style={{ color: '#8B5CF6' }} /> : <AiOutlineHeart />}
+              <button onClick={handleToggleFavorite} data-active={isFavorite}>
+                {isFavorite ? <AiFillHeart /> : <AiOutlineHeart />}
                 <span>Favoritar</span>
               </button>
-             {hasQueue && ( 
-              <button onClick={toggleAutoPlay} style={{ color: autoPlay ? '#8B5CF6' : 'white' }}>
-                <AiOutlineSync />
-                <span>Autoplay</span>
-              </button>
+              
+              {hasQueue && (
+                <button onClick={toggleAutoPlay} data-active={autoPlay}>
+                  <AiOutlineSync />
+                  <span>Autoplay</span>
+                </button>
               )}
-             {!hasQueue && (
+              
               <button onClick={() => setShowPlaylistModal(true)}>
                 <AiOutlinePlus />
                 <span>Playlist</span>
               </button>
-             )}
-             
-
+              
+              {!isDownloaded ? (
+                <button onClick={handleDownload} disabled={isDownloading}>
+                  {isDownloading ? <AiOutlineCloud /> : <AiOutlineDownload />}
+                  <span>{isDownloading ? 'Baixando...' : 'Baixar'}</span>
+                </button>
+              ) : (
+                <button data-active={true}>
+                  <AiOutlineCloud />
+                  <span>Baixado</span>
+                </button>
+              )}
             </AdditionalControls>
           </>
         )}
