@@ -521,7 +521,9 @@ const Home = () => {
 
   return (
     <HomeContainer>
+      
       <InstallPWA />
+   
       {!apiKey ? (
        <WelcomeCard>
        <h2>🎵 Orsheep Music Player</h2>

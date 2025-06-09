@@ -9,7 +9,7 @@ import AddToPlaylistModal from '../components/AddToPlaylistModal'
 import DownloadService from '../services/DownloadService'
 
 const Container = styled.div`
-  min-height: 100vh;
+  height: 100vh;
   background: #121212;
   color: white;
   padding: 20px;
@@ -20,13 +20,14 @@ const Header = styled.header`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 32px;
+  margin-bottom: 16px;
   width: 100%;
 
   .left {
     display: flex;
     align-items: center;
     gap: 16px;
+    padding-left: 8px;
 
     button {
       background: none;
@@ -34,7 +35,6 @@ const Header = styled.header`
       color: white;
       font-size: 1.5rem;
       cursor: pointer;
-      padding: 8px;
       border-radius: 50%;
       transition: all 0.2s;
 
@@ -88,13 +88,15 @@ const TrackInfo = styled.div`
   align-items: center;
   text-align: center;
   margin-bottom: 32px;
-
+  
+  
   img {
-    width: 280px;
-    height: 280px;
-    border-radius: 8px;
-    margin-bottom: 24px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  width: 100%;
+  height: 280px;
+  object-fit: cover; 
+  border-radius: 8px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   }
 
   h1 {
@@ -115,7 +117,7 @@ const Controls = styled.div`
   align-items: center;
   justify-content: center;
   gap: 24px;
-  margin-bottom: 32px;
+  margin-bottom:16px;
 
   button {
     background: none;
@@ -123,7 +125,7 @@ const Controls = styled.div`
     color: white;
     cursor: pointer;
     transition: all 0.2s;
-    padding: 8px;
+    padding: 4px 16px;
     border-radius: 50%;
 
     &:hover {
@@ -213,8 +215,8 @@ const TimeInfo = styled.div`
 const AdditionalControls = styled.div`
   display: flex;
   justify-content: center;
-  gap: 24px;
-  margin-top: 32px;
+  gap: 16px;
+  margin-top: 16px;
   width: 100%;
 
   button {
@@ -227,7 +229,7 @@ const AdditionalControls = styled.div`
     color: white;
     cursor: pointer;
     transition: all 0.2s;
-    padding: 8px 16px;
+    padding: 8px 8px;
     border-radius: 8px;
 
     svg {
@@ -267,6 +269,7 @@ const AdditionalControls = styled.div`
 const QueueContainer = styled.div`
   width: 100%;
   margin-top: 48px;
+  margin-bottom:100px;
 `
 
 const QueueTitle = styled.h2`
@@ -407,20 +410,18 @@ const ControlButton = styled.button`
 const PlayerPage = () => {
   const location = useLocation()
   const navigate = useNavigate()
+  const { state } = location
   const { 
     currentTrack,
     isPlaying,
+    togglePlay,
     currentTime,
     duration,
-    togglePlay,
     seekTo,
     nextTrack,
     previousTrack,
-    autoPlay,
-    toggleAutoPlay,
-    shuffle,
-    toggleShuffle,
     queue,
+    setQueue,
     currentQueueIndex,
     playTrack
   } = usePlayer()
@@ -432,6 +433,15 @@ const PlayerPage = () => {
   const [playerReady, setPlayerReady] = useState(false)
   const fromHome = location.state?.fromHome
   const hasQueue = queue.length > 1
+
+  useEffect(() => {
+    if (state?.queue && state?.currentQueueIndex !== undefined) {
+      setQueue(state.queue)
+      if (state.track) {
+        playTrack(state.track, true, state.queue, state.currentQueueIndex)
+      }
+    }
+  }, [state])
 
   useEffect(() => {
     if (!currentTrack && location.state?.track) {
@@ -498,12 +508,10 @@ const PlayerPage = () => {
   }
 
   const handleBack = () => {
-    // Se veio de uma rota específica, volta para ela
-    if (location.state?.from) {
-      navigate(location.state.from)
+    if (state?.from) {
+      navigate(state.from)
     } else {
-      // Se não tem rota específica, volta para a última rota
-      navigate(-1)
+      navigate('/')
     }
   }
   
@@ -549,19 +557,12 @@ const PlayerPage = () => {
       <Content>
         {currentTrack && (
           <>
-            <Thumbnail>
-              <img 
-                src={`https://img.youtube.com/vi/${currentTrack.id}/maxresdefault.jpg`}
-                alt={currentTrack.title}
-                onError={(e) => {
-                  e.target.src = `https://img.youtube.com/vi/${currentTrack.id}/hqdefault.jpg`
-                }}
-              />
-            </Thumbnail>
+           
 
-            <TrackInfo>
-              <h1>{currentTrack.title}</h1>
-              <p>YouTube Music</p>
+            <TrackInfo className='TrackInfo'>
+              <img src={currentTrack?.thumbnail || defaultThumbnail} alt={currentTrack?.title}/>
+              <h1>{currentTrack?.title?.length > 34 ? `${currentTrack.title.substring(0, 46)}...` : currentTrack?.title}</h1>
+              <p>{currentTrack?.artist || 'Artista Desconhecido'}</p>
             </TrackInfo>
 
             <ProgressContainer>
@@ -600,14 +601,20 @@ const PlayerPage = () => {
                 {isFavorite ? <AiFillHeart style={{ color: '#8B5CF6' }} /> : <AiOutlineHeart />}
                 <span>Favoritar</span>
               </button>
+             {hasQueue && ( 
               <button onClick={toggleAutoPlay} style={{ color: autoPlay ? '#8B5CF6' : 'white' }}>
                 <AiOutlineSync />
                 <span>Autoplay</span>
               </button>
+              )}
+             {!hasQueue && (
               <button onClick={() => setShowPlaylistModal(true)}>
                 <AiOutlinePlus />
                 <span>Playlist</span>
               </button>
+             )}
+             
+
             </AdditionalControls>
           </>
         )}

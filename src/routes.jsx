@@ -51,7 +51,9 @@ const AppRoutes = () => {
     onEnded,
     seekTo,
     nextTrack,
-    previousTrack
+    previousTrack,
+    queue,
+    currentQueueIndex
   } = usePlayer()
   const location = useLocation()
   const showMiniPlayer = !location.pathname.includes('/player')
@@ -61,7 +63,9 @@ const AppRoutes = () => {
       state: { 
         track: currentTrack,
         from: location.pathname,
-        keepPlaying: true
+        keepPlaying: true,
+        queue: queue,
+        currentQueueIndex: currentQueueIndex
       }
     })
   }

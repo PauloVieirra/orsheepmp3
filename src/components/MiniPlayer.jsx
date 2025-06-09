@@ -197,9 +197,7 @@ const MiniPlayer = () => {
           >
             <AiOutlineStepForward />
           </button>
-          <button onClick={handleAddToPlaylist}>
-            <AiOutlinePlus />
-          </button>
+         
         </Controls>
       </Container>
 

@@ -41,28 +41,48 @@ const InstallButton = styled.button`
   }
 `
 
-const Modal = styled.div`
+const Overlay = styled.div`
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+`
+
+const Modal = styled.div`
   background: #282828;
   padding: 24px;
   border-radius: 12px;
   width: 90%;
   max-width: 400px;
-  z-index: 1001;
   color: white;
   text-align: center;
 
-  h3 {
-    margin: 0 0 16px;
-    font-size: 1.2rem;
+  h2 {
+    margin-bottom: 16px;
+    font-size: 1.4rem;
   }
 
   p {
-    margin: 0 0 24px;
+    margin-bottom: 16px;
     color: rgba(255, 255, 255, 0.7);
+  }
+
+  ul {
+    text-align: left;
+    margin-bottom: 24px;
+    padding-left: 20px;
+
+    li {
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.8);
+    }
   }
 
   .buttons {
@@ -95,18 +115,13 @@ const Modal = styled.div`
           background: rgba(255, 255, 255, 0.15);
         }
       }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
     }
   }
-`
-
-const Overlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
 `
 
 const InstallPWA = () => {
@@ -116,12 +131,11 @@ const InstallPWA = () => {
   const [isInstalling, setIsInstalling] = useState(false)
 
   useEffect(() => {
-    // Verifica se o app já está instalado
     const checkInstallation = () => {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches
         || window.navigator.standalone
         || document.referrer.includes('android-app://')
-      
+
       if (isStandalone) {
         setIsInstalled(true)
         localStorage.setItem('pwaInstalled', 'true')
@@ -146,7 +160,6 @@ const InstallPWA = () => {
 
     window.addEventListener('beforeinstallprompt', handler)
 
-    // Detecta quando a instalação é completada
     window.addEventListener('appinstalled', () => {
       setIsInstalled(true)
       setShowModal(false)
@@ -156,7 +169,6 @@ const InstallPWA = () => {
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler)
-      window.removeEventListener('appinstalled', () => {})
     }
   }, [])
 
@@ -185,7 +197,6 @@ const InstallPWA = () => {
     }
   }
 
-  // Não mostra nada se o app já estiver instalado
   if (isInstalled) return null
 
   return (
@@ -195,15 +206,15 @@ const InstallPWA = () => {
       </InstallButton>
 
       {showModal && (
-        <Modal>
-          <div className="modal-content">
-            <h2>Instalar o Orsheep Music Player</h2>
+        <Overlay>
+          <Modal>
+            <h2>Instalar Orsheep Player</h2>
             <p>Instale nosso app para ter a melhor experiência:</p>
             <ul>
-              <li>✨ Interface otimizada para seu dispositivo</li>
-              <li>🚀 Acesso mais rápido</li>
-              <li>📱 Ícone na tela inicial</li>
-              <li>🎵 Melhor experiência de áudio</li>
+              <li> Interface otimizada para seu dispositivo</li>
+              <li> Acesso mais rápido</li>
+              <li> Ícone na tela inicial</li>
+              <li> Melhor experiência de áudio</li>
             </ul>
             <div className="buttons">
               <button className="cancel" onClick={() => setShowModal(false)}>
@@ -217,11 +228,11 @@ const InstallPWA = () => {
                 {isInstalling ? 'Instalando...' : 'Instalar Agora'}
               </button>
             </div>
-          </div>
-        </Modal>
+          </Modal>
+        </Overlay>
       )}
     </>
   )
 }
 
-export default InstallPWA 
+export default InstallPWA
