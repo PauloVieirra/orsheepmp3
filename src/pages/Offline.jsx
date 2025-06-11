@@ -151,7 +151,7 @@ const Offline = () => {
   }
 
   const handlePlay = (track) => {
-    playTrack(track)
+    playTrack(track, true, [], -1, true)
     navigate('/player', { state: { track } })
   }
 

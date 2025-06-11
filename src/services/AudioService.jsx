@@ -1,4 +1,5 @@
 import { setupMediaSession, updateMediaSessionState, updatePositionState } from './MediaSessionService'
+import React, { useState, useRef, useEffect } from 'react';
 
 class AudioService {
   constructor() {
@@ -10,40 +11,46 @@ class AudioService {
   }
 
   async initialize() {
-    // Inicializa o contexto de áudio (necessário para alguns navegadores)
-    if (!this.audioContext && 'AudioContext' in window) {
-      this.audioContext = new AudioContext()
-    }
-
-    // Solicita permissão para manter a tela ativa
-    await this.requestWakeLock()
-
-    // Configura handlers para eventos do sistema
-    this.setupSystemEvents()
-
-    // Carrega a configuração de reprodução em segundo plano
-    this.loadBackgroundPlaySettings()
-  }
-
-  loadBackgroundPlaySettings() {
+    // Carrega configurações salvas
     try {
       const settings = JSON.parse(localStorage.getItem('appSettings') || '{}')
-      this.backgroundPlayEnabled = settings.backgroundPlay ?? true
+      this.backgroundPlayEnabled = settings.backgroundPlay || false
+      if (this.backgroundPlayEnabled) {
+        await this.requestWakeLock()
+      }
     } catch (error) {
       console.error('Erro ao carregar configurações:', error)
-      this.backgroundPlayEnabled = true
     }
+
+    // Inicializa o contexto de áudio
+    try {
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)()
+    } catch (error) {
+      console.error('Erro ao inicializar contexto de áudio:', error)
+    }
+
+    this.setupSystemEvents()
   }
 
   async requestWakeLock() {
-    if ('wakeLock' in navigator && this.backgroundPlayEnabled) {
+    if ('wakeLock' in navigator) {
       try {
         this.wakeLock = await navigator.wakeLock.request('screen')
-        console.log('Wake Lock ativado')
-      } catch (err) {
-        console.log('Wake Lock não suportado:', err)
+        
+        // Adiciona listener para reaquirir o wakeLock quando a tela é reativada
+        this.wakeLock.addEventListener('release', async () => {
+          if (this.backgroundPlayEnabled && document.visibilityState !== 'hidden') {
+            await this.requestWakeLock()
+          }
+        })
+        
+        return true
+      } catch (error) {
+        console.error('Erro ao solicitar wakeLock:', error)
+        return false
       }
     }
+    return false
   }
 
   async releaseWakeLock() {
@@ -51,9 +58,8 @@ class AudioService {
       try {
         await this.wakeLock.release()
         this.wakeLock = null
-        console.log('Wake Lock liberado')
-      } catch (err) {
-        console.error('Erro ao liberar Wake Lock:', err)
+      } catch (error) {
+        console.error('Erro ao liberar wakeLock:', error)
       }
     }
   }
@@ -64,19 +70,26 @@ class AudioService {
       if (this.backgroundPlayEnabled) {
         if (document.visibilityState === 'visible' && !this.wakeLock) {
           await this.requestWakeLock()
-        } else if (document.visibilityState === 'hidden') {
-          // Mantém a reprodução em segundo plano
-          if (this.player && this.player.isPlaying()) {
-            // Notifica o service worker
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-              navigator.serviceWorker.controller.postMessage({
-                type: 'BACKGROUND_AUDIO',
-                payload: { 
-                  title: this.player.getCurrentTrack()?.title,
-                  playing: true
-                }
-              })
-            }
+        }
+        
+        // Mantém a reprodução em segundo plano independente do estado da tela
+        if (this.player && this.player.getInternalPlayer()) {
+          const isPlaying = this.player.getInternalPlayer().getPlayerState() === 1
+          
+          // Notifica o service worker
+          if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({
+              type: 'BACKGROUND_AUDIO',
+              payload: { 
+                title: this.player.getCurrentTrack()?.title,
+                playing: isPlaying
+              }
+            })
+          }
+
+          // Se estiver tocando, garante que continue tocando
+          if (isPlaying) {
+            this.player.getInternalPlayer().playVideo()
           }
         }
       }

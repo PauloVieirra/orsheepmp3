@@ -623,7 +623,7 @@ const Search = () => {
 
   const handlePlayNow = () => {
     if (selectedTrack) {
-      playTrack(selectedTrack, true)
+      playTrack(selectedTrack, true, [], -1, true)
       setSelectedTrack(null)
       
       navigate('/player', {

@@ -425,12 +425,6 @@ const PlayerPage = () => {
   }, [state])
 
   useEffect(() => {
-    if (!currentTrack && location.state?.track) {
-      navigate('/', { replace: true })
-    }
-  }, [currentTrack, location.state, navigate])
-
-  useEffect(() => {
     // Verifica se a música está nos favoritos
     const checkFavorite = async () => {
       const favorites = await getFavoriteTracks()

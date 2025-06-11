@@ -107,14 +107,23 @@ const CustomPlayer = ({
               iv_load_policy: 3,
               showinfo: 0,
               playsinline: 1,
-              rel: 0
+              rel: 0,
+              enablejsapi: 1,
+              html5: 1
             },
             embedOptions: {
               controls: 0,
               disablekb: 1,
               fs: 0,
               playsinline: 1,
-              rel: 0
+              rel: 0,
+              enablejsapi: 1,
+              html5: 1
+            },
+            onUnstarted: () => {
+              if (playing) {
+                playerRef.current?.getInternalPlayer()?.playVideo()
+              }
             }
           }
         }}

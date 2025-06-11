@@ -154,7 +154,7 @@ const Playlist = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const { getPlaylists, savePlaylists } = useStorage()
-  const { currentTrack, isPlaying, removeTrackFromPlaylist } = usePlayer()
+  const { currentTrack, isPlaying, removeTrackFromPlaylist, playTrack } = usePlayer()
   const [playlist, setPlaylist] = useState(null)
   const [offlineTracks, setOfflineTracks] = useState([])
 
@@ -179,6 +179,7 @@ const Playlist = () => {
   }
 
   const handlePlayTrack = (track, index) => {
+    playTrack(track, true, playlist.tracks, index, true)
     navigate('/player', { 
       state: { 
         track,

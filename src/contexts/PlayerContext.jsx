@@ -97,7 +97,7 @@ export const PlayerProvider = ({ children }) => {
     }
   }, [queue, currentQueueIndex, clearError])
 
-  const playTrack = useCallback(async (track, shouldAutoPlay = true, playlistTracks = [], index = -1) => {
+  const playTrack = useCallback(async (track, shouldAutoPlay = true, playlistTracks = [], index = -1, shouldNavigate = false) => {
     try {
       clearError()
       const isSameTrack = currentTrack?.id === track.id
@@ -160,7 +160,7 @@ export const PlayerProvider = ({ children }) => {
       console.error('Erro ao reproduzir vídeo:', error)
       handlePlayerError()
     }
-  }, [currentTrack, playerInstance, getRecentTracks, saveRecentTracks, togglePlay, handlePlayerError, clearError])
+  }, [currentTrack, playerInstance, isPlaying, clearError, getRecentTracks, saveRecentTracks, handlePlayerError])
 
   const updateCurrentIndex = useCallback((track) => {
     const queueIndex = queue.findIndex(t => t.id === track.id)
@@ -187,7 +187,7 @@ export const PlayerProvider = ({ children }) => {
         playTrack(nextTrack, true, queue, nextIndex)
       }
     }
-  }, [queue, currentQueueIndex])
+  }, [queue, currentQueueIndex, playTrack])
 
   const previousTrack = useCallback(() => {
     if (queue.length > 0 && currentQueueIndex > 0) {
@@ -198,7 +198,7 @@ export const PlayerProvider = ({ children }) => {
         playTrack(prevTrack, true, queue, prevIndex)
       }
     }
-  }, [queue, currentQueueIndex])
+  }, [queue, currentQueueIndex, playTrack])
 
   const handleSetQueue = useCallback((tracks) => {
     setQueue(tracks)
@@ -214,7 +214,7 @@ export const PlayerProvider = ({ children }) => {
     setCurrentPlaylist(playlist)
     setQueue(playlist.tracks)
     setCurrentQueueIndex(0)
-    playTrack(playlist.tracks[0], true, playlist.tracks, 0)
+    playTrack(playlist.tracks[0], true, playlist.tracks, 0, false)
   }, [playTrack])
 
   const addToPlaylist = useCallback(async (track, playlistId) => {
@@ -286,7 +286,9 @@ export const PlayerProvider = ({ children }) => {
         break
       case 0: // ended
         setIsPlaying(false)
-        if (autoPlay && queue.length > currentQueueIndex + 1) {
+        // Sempre verifica se há próxima música, independente do estado da tela
+        if (queue.length > currentQueueIndex + 1) {
+          // Removendo o shouldNavigate para evitar navegação automática
           nextTrack()
         }
         break
@@ -308,15 +310,17 @@ export const PlayerProvider = ({ children }) => {
         }
         break
     }
-  }, [isPlaying, playerInstance, autoPlay, queue, currentQueueIndex, nextTrack, clearError])
+  }, [isPlaying, playerInstance, queue, currentQueueIndex, nextTrack, clearError])
 
   const onEnded = useCallback(() => {
-    if (autoPlay && queue.length > 0 && currentQueueIndex < queue.length - 1) {
+    // Sempre verifica se há próxima música, independente do estado da tela
+    if (queue.length > 0 && currentQueueIndex < queue.length - 1) {
+      // Removendo o shouldNavigate para evitar navegação automática
       nextTrack()
     } else {
       setIsPlaying(false)
     }
-  }, [autoPlay, queue, currentQueueIndex, nextTrack])
+  }, [queue, currentQueueIndex, nextTrack])
 
   const changeVolume = useCallback(async (value) => {
     try {
