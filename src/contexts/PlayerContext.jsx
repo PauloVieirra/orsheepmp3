@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import { useStorage } from './StorageContext'
 import { useNavigate } from 'react-router-dom'
 import ErrorNotification from '../components/ErrorNotification'
+import { setupMediaSession, updateMediaSessionState, updatePositionState } from '../services/MediaSessionService'
 
 const PlayerContext = createContext({})
 
@@ -31,6 +32,23 @@ export const PlayerProvider = ({ children }) => {
     loadSettings()
   }, [])
 
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Quando a página volta a ficar visível, atualiza o estado do player
+        if (playerInstance) {
+          const playerState = playerInstance.getPlayerState()
+          setIsPlaying(playerState === 1)
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [playerInstance])
+
   const loadSettings = async () => {
     try {
       const settings = await getSettings()
@@ -55,6 +73,12 @@ export const PlayerProvider = ({ children }) => {
   const handleProgress = useCallback(({ playedSeconds }) => {
     setCurrentTime(playedSeconds)
     setProgress(playedSeconds / duration)
+    // Atualiza a posição no MediaSession
+    updatePositionState({
+      duration,
+      currentTime: playedSeconds,
+      playbackRate: 1
+    })
   }, [duration])
 
   const handleDuration = useCallback((duration) => {
@@ -96,6 +120,27 @@ export const PlayerProvider = ({ children }) => {
       }, 2000)
     }
   }, [queue, currentQueueIndex, clearError])
+
+  const seekTo = useCallback((time) => {
+    if (playerInstance) {
+      playerInstance.seekTo(time)
+      setCurrentTime(time)
+    }
+    setProgress(time / duration)
+    return time
+  }, [playerInstance, duration])
+
+  const updateCurrentIndex = useCallback((track) => {
+    const queueIndex = queue.findIndex(t => t.id === track.id)
+    if (queueIndex !== -1) {
+      setCurrentQueueIndex(queueIndex)
+    }
+  }, [queue])
+
+  const handleSetQueue = useCallback((tracks) => {
+    setQueue(tracks)
+    setCurrentQueueIndex(0)
+  }, [])
 
   const playTrack = useCallback(async (track, shouldAutoPlay = true, playlistTracks = [], index = -1, shouldNavigate = false) => {
     try {
@@ -147,36 +192,45 @@ export const PlayerProvider = ({ children }) => {
         currentQueueIndex: index >= 0 ? index : 0
       }))
 
-      // Se o player já estiver pronto, inicia a reprodução
+      // Se o player já estiver pronto, inicia a reprodução imediatamente
       if (playerInstance) {
-        playerInstance.loadVideoById(track.id)
+        playerInstance.loadVideoById({
+          videoId: track.id,
+          startSeconds: 0,
+          suggestedQuality: 'small'
+        })
+        
         if (shouldAutoPlay) {
-          setTimeout(() => {
-            playerInstance.playVideo()
-          }, 100)
+          // Sistema de retry mais agressivo para iniciar a reprodução
+          let retryCount = 0
+          const maxRetries = 10
+          
+          const tryPlay = () => {
+            try {
+              if (retryCount >= maxRetries) return
+              
+              playerInstance.playVideo()
+              const state = playerInstance.getPlayerState()
+              
+              if (state !== 1) {
+                retryCount++
+                setTimeout(tryPlay, 100)
+              }
+            } catch (error) {
+              console.error('Erro ao iniciar reprodução:', error)
+              retryCount++
+              setTimeout(tryPlay, 100)
+            }
+          }
+          
+          tryPlay()
         }
       }
     } catch (error) {
       console.error('Erro ao reproduzir vídeo:', error)
       handlePlayerError()
     }
-  }, [currentTrack, playerInstance, isPlaying, clearError, getRecentTracks, saveRecentTracks, handlePlayerError])
-
-  const updateCurrentIndex = useCallback((track) => {
-    const queueIndex = queue.findIndex(t => t.id === track.id)
-    if (queueIndex !== -1) {
-      setCurrentQueueIndex(queueIndex)
-    }
-  }, [queue])
-
-  const seekTo = useCallback((time) => {
-    if (playerInstance) {
-      playerInstance.seekTo(time)
-      setCurrentTime(time)
-    }
-    setProgress(time / duration)
-    return time
-  }, [playerInstance, duration])
+  }, [currentTrack, playerInstance, isPlaying, clearError, getRecentTracks, saveRecentTracks, handlePlayerError, togglePlay])
 
   const nextTrack = useCallback(() => {
     if (queue.length > 0 && currentQueueIndex < queue.length - 1) {
@@ -199,11 +253,6 @@ export const PlayerProvider = ({ children }) => {
       }
     }
   }, [queue, currentQueueIndex, playTrack])
-
-  const handleSetQueue = useCallback((tracks) => {
-    setQueue(tracks)
-    setCurrentQueueIndex(0)
-  }, [])
 
   const playPlaylist = useCallback((playlist) => {
     if (!playlist || !playlist.tracks || playlist.tracks.length === 0) {
@@ -248,19 +297,80 @@ export const PlayerProvider = ({ children }) => {
     return await getStoragePlaylists()
   }, [getStoragePlaylists])
 
+  const setupMediaSessionHandlers = useCallback(() => {
+    if ('mediaSession' in navigator) {
+      setupMediaSession({
+        title: currentTrack?.title || '',
+        artist: currentTrack?.artist || 'YouTube Music',
+        artwork: currentTrack ? `https://img.youtube.com/vi/${currentTrack.id}/maxresdefault.jpg` : '',
+        onPlay: () => togglePlay(true),
+        onPause: () => togglePlay(false),
+        onPrevious: previousTrack,
+        onNext: nextTrack,
+        onSeekTo: (time) => seekTo(time)
+      })
+    }
+  }, [currentTrack, togglePlay, previousTrack, nextTrack, seekTo])
+
+  useEffect(() => {
+    if (currentTrack) {
+      setupMediaSessionHandlers()
+    }
+  }, [currentTrack, setupMediaSessionHandlers])
+
   const onPlayerReady = useCallback((player) => {
     console.log('Player ready')
     playerRef.current = player
     const internalPlayer = player.getInternalPlayer()
     setPlayerInstance(internalPlayer)
     
+    // Configura o player para permitir reprodução em segundo plano
+    if (internalPlayer) {
+      // Força configurações para reprodução em segundo plano
+      internalPlayer.setPlaybackQuality('small')
+      internalPlayer.setPlaybackRate(1)
+      internalPlayer.setPlaybackQualityRange('small', 'small')
+      
+      // Configura o player para manter a reprodução em segundo plano
+      try {
+        internalPlayer.setOption('playerVars', {
+          'autoplay': 1,
+          'playsinline': 1,
+          'controls': 0,
+          'rel': 0,
+          'showinfo': 0,
+          'modestbranding': 1,
+          'enablejsapi': 1,
+          'origin': window.location.origin,
+          'widget_referrer': window.location.href
+        })
+      } catch (error) {
+        console.error('Erro ao configurar player:', error)
+      }
+    }
+    
     // Se houver uma música atual, carrega ela
     if (currentTrack) {
-      internalPlayer.loadVideoById(currentTrack.id)
+      internalPlayer.loadVideoById({
+        videoId: currentTrack.id,
+        startSeconds: 0,
+        suggestedQuality: 'small'
+      })
       if (isPlaying) {
-        setTimeout(() => {
-          internalPlayer.playVideo()
-        }, 100)
+        // Força o início da reprodução com múltiplas tentativas
+        const tryPlay = () => {
+          try {
+            internalPlayer.playVideo()
+            // Verifica se realmente começou a tocar
+            if (internalPlayer.getPlayerState() !== 1) {
+              setTimeout(tryPlay, 50)
+            }
+          } catch (error) {
+            console.error('Erro ao iniciar reprodução:', error)
+            setTimeout(tryPlay, 50)
+          }
+        }
+        tryPlay()
       }
     }
   }, [currentTrack, isPlaying])
@@ -279,48 +389,168 @@ export const PlayerProvider = ({ children }) => {
     switch (state) {
       case -1: // unstarted
         if (isPlaying && playerInstance) {
-          setTimeout(() => {
-            playerInstance.playVideo()
-          }, 100)
+          // Sistema de retry mais agressivo para iniciar a reprodução
+          let retryCount = 0
+          const maxRetries = 30 // Aumentado para mais tentativas
+          
+          const tryPlay = () => {
+            try {
+              if (retryCount >= maxRetries) return
+              
+              playerInstance.playVideo()
+              const currentState = playerInstance.getPlayerState()
+              
+              if (currentState !== 1) {
+                retryCount++
+                setTimeout(tryPlay, 50)
+              }
+            } catch (error) {
+              console.error('Erro ao iniciar reprodução:', error)
+              retryCount++
+              setTimeout(tryPlay, 50)
+            }
+          }
+          
+          tryPlay()
         }
         break
       case 0: // ended
         setIsPlaying(false)
-        // Sempre verifica se há próxima música, independente do estado da tela
-        if (queue.length > currentQueueIndex + 1) {
-          // Removendo o shouldNavigate para evitar navegação automática
-          nextTrack()
+        updateMediaSessionState('none')
+        // Verifica se há próxima música e se auto play está ativado
+        if (queue.length > currentQueueIndex + 1 && autoPlay) {
+          // Força a reprodução da próxima música imediatamente
+          const nextIndex = currentQueueIndex + 1
+          const nextTrack = queue[nextIndex]
+          if (nextTrack) {
+            setCurrentQueueIndex(nextIndex)
+            // Força a reprodução imediata
+            if (playerInstance) {
+              // Carrega o próximo vídeo com configurações otimizadas
+              playerInstance.loadVideoById({
+                videoId: nextTrack.id,
+                startSeconds: 0,
+                suggestedQuality: 'small'
+              })
+              
+              // Sistema de retry mais agressivo para iniciar a reprodução
+              let retryCount = 0
+              const maxRetries = 30
+              
+              const tryPlay = () => {
+                try {
+                  if (retryCount >= maxRetries) return
+                  
+                  playerInstance.playVideo()
+                  const currentState = playerInstance.getPlayerState()
+                  
+                  if (currentState !== 1) {
+                    retryCount++
+                    setTimeout(tryPlay, 50)
+                  }
+                } catch (error) {
+                  console.error('Erro ao iniciar reprodução:', error)
+                  retryCount++
+                  setTimeout(tryPlay, 50)
+                }
+              }
+              
+              tryPlay()
+            }
+            playTrack(nextTrack, true, queue, nextIndex)
+          }
         }
         break
       case 1: // playing
         setIsPlaying(true)
+        updateMediaSessionState('playing')
         clearError()
         break
       case 2: // paused
         setIsPlaying(false)
+        updateMediaSessionState('paused')
         break
       case 3: // buffering
         // Mantém o estado de reprodução
         break
       case 5: // video cued
         if (isPlaying && playerInstance) {
-          setTimeout(() => {
-            playerInstance.playVideo()
-          }, 100)
+          // Sistema de retry mais agressivo para iniciar a reprodução
+          let retryCount = 0
+          const maxRetries = 30
+          
+          const tryPlay = () => {
+            try {
+              if (retryCount >= maxRetries) return
+              
+              playerInstance.playVideo()
+              const currentState = playerInstance.getPlayerState()
+              
+              if (currentState !== 1) {
+                retryCount++
+                setTimeout(tryPlay, 50)
+              }
+            } catch (error) {
+              console.error('Erro ao iniciar reprodução:', error)
+              retryCount++
+              setTimeout(tryPlay, 50)
+            }
+          }
+          
+          tryPlay()
         }
         break
     }
-  }, [isPlaying, playerInstance, queue, currentQueueIndex, nextTrack, clearError])
+  }, [isPlaying, playerInstance, queue, currentQueueIndex, autoPlay, playTrack, clearError])
 
   const onEnded = useCallback(() => {
-    // Sempre verifica se há próxima música, independente do estado da tela
-    if (queue.length > 0 && currentQueueIndex < queue.length - 1) {
-      // Removendo o shouldNavigate para evitar navegação automática
-      nextTrack()
+    // Verifica se há próxima música e se auto play está ativado
+    if (queue.length > 0 && currentQueueIndex < queue.length - 1 && autoPlay) {
+      // Força a reprodução da próxima música imediatamente
+      const nextIndex = currentQueueIndex + 1
+      const nextTrack = queue[nextIndex]
+      if (nextTrack) {
+        setCurrentQueueIndex(nextIndex)
+        // Força a reprodução imediata
+        if (playerInstance) {
+          // Carrega o próximo vídeo com configurações otimizadas
+          playerInstance.loadVideoById({
+            videoId: nextTrack.id,
+            startSeconds: 0,
+            suggestedQuality: 'small'
+          })
+          
+          // Sistema de retry mais agressivo para iniciar a reprodução
+          let retryCount = 0
+          const maxRetries = 30
+          
+          const tryPlay = () => {
+            try {
+              if (retryCount >= maxRetries) return
+              
+              playerInstance.playVideo()
+              const currentState = playerInstance.getPlayerState()
+              
+              if (currentState !== 1) {
+                retryCount++
+                setTimeout(tryPlay, 50)
+              }
+            } catch (error) {
+              console.error('Erro ao iniciar reprodução:', error)
+              retryCount++
+              setTimeout(tryPlay, 50)
+            }
+          }
+          
+          tryPlay()
+        }
+        playTrack(nextTrack, true, queue, nextIndex)
+      }
     } else {
       setIsPlaying(false)
+      updateMediaSessionState('none')
     }
-  }, [queue, currentQueueIndex, nextTrack])
+  }, [queue, currentQueueIndex, autoPlay, playTrack, playerInstance])
 
   const changeVolume = useCallback(async (value) => {
     try {
