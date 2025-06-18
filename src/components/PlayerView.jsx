@@ -345,7 +345,7 @@ const PlayerView = ({ onClose }) => {
           <ExtraButton 
             onClick={toggleAutoPlay} 
             $active={autoPlay} 
-            title={autoPlay ? "Desativar reprodução automática" : "Ativar reprodução automática"}
+            title={autoPlay ? "Desativar reprodução automática." : "Ativar reprodução automática"}
           >
             <AiOutlineSync />
           </ExtraButton>
