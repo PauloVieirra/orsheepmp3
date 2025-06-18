@@ -2,7 +2,9 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import { useStorage } from './StorageContext'
 import { useNavigate } from 'react-router-dom'
 import ErrorNotification from '../components/ErrorNotification'
+import BufferProgress from '../components/BufferProgress'
 import { setupMediaSession, updateMediaSessionState, updatePositionState } from '../services/MediaSessionService'
+import audioBufferService from '../services/AudioBufferService'
 
 const PlayerContext = createContext({})
 
@@ -26,10 +28,17 @@ export const PlayerProvider = ({ children }) => {
   const [volume, setVolume] = useState(1)
   const [error, setError] = useState(null)
   
+  // Estados do buffer
+  const [isBuffering, setIsBuffering] = useState(false)
+  const [bufferProgress, setBufferProgress] = useState(0)
+  const [showBufferProgress, setShowBufferProgress] = useState(false)
+  const [bufferInfo, setBufferInfo] = useState(null)
+  
   const playerRef = useRef(null)
 
   useEffect(() => {
     loadSettings()
+    setupBufferCallbacks()
   }, [])
 
   useEffect(() => {
@@ -192,6 +201,10 @@ export const PlayerProvider = ({ children }) => {
         currentQueueIndex: index >= 0 ? index : 0
       }))
 
+      // Inicia o buffer para a faixa atual e próximas faixas
+      const queueToBuffer = playlistTracks.length > 0 ? playlistTracks : [track]
+      startBuffer(track, queueToBuffer)
+
       // Se o player já estiver pronto, inicia a reprodução imediatamente
       if (playerInstance) {
         playerInstance.loadVideoById({
@@ -230,7 +243,7 @@ export const PlayerProvider = ({ children }) => {
       console.error('Erro ao reproduzir vídeo:', error)
       handlePlayerError()
     }
-  }, [currentTrack, playerInstance, isPlaying, clearError, getRecentTracks, saveRecentTracks, handlePlayerError, togglePlay])
+  }, [currentTrack, playerInstance, isPlaying, clearError, getRecentTracks, saveRecentTracks, handlePlayerError, togglePlay, startBuffer])
 
   const nextTrack = useCallback(() => {
     if (queue.length > 0 && currentQueueIndex < queue.length - 1) {
@@ -720,6 +733,78 @@ export const PlayerProvider = ({ children }) => {
     }
   }, [currentPlaylist, queue, currentQueueIndex, currentTrack, playerInstance, getStoragePlaylists, savePlaylists, playTrack])
 
+  // Configura os callbacks do buffer
+  const setupBufferCallbacks = useCallback(() => {
+    audioBufferService.setCallbacks({
+      onProgress: (progress) => {
+        setBufferProgress(progress)
+        setShowBufferProgress(true)
+      },
+      onComplete: (track) => {
+        setIsBuffering(false)
+        setBufferProgress(100)
+        setShowBufferProgress(false)
+        updateBufferInfo()
+        console.log(`Buffer completo para: ${track.title}`)
+      },
+      onError: (track, error) => {
+        setIsBuffering(false)
+        setShowBufferProgress(false)
+        console.error(`Erro no buffer de ${track.title}:`, error)
+      }
+    })
+  }, [])
+
+  // Atualiza informações do buffer
+  const updateBufferInfo = useCallback(() => {
+    const info = audioBufferService.getBufferInfo()
+    setBufferInfo(info)
+  }, [])
+
+  // Inicia o buffer para uma faixa
+  const startBuffer = useCallback(async (track, queueTracks = []) => {
+    if (!track) return
+    
+    setIsBuffering(true)
+    setBufferProgress(0)
+    setShowBufferProgress(true)
+    
+    try {
+      await audioBufferService.startBuffer(track, queueTracks)
+    } catch (error) {
+      console.error('Erro ao iniciar buffer:', error)
+      setIsBuffering(false)
+      setShowBufferProgress(false)
+    }
+  }, [])
+
+  // Verifica se uma faixa está em buffer
+  const isTrackBuffered = useCallback((trackId) => {
+    return audioBufferService.isTrackBuffered(trackId)
+  }, [])
+
+  // Obtém áudio bufferizado
+  const getBufferedAudio = useCallback((trackId) => {
+    return audioBufferService.getBufferedAudio(trackId)
+  }, [])
+
+  // Limpa buffer de uma faixa
+  const clearTrackBuffer = useCallback((trackId) => {
+    audioBufferService.clearTrackBuffer(trackId)
+    updateBufferInfo()
+  }, [updateBufferInfo])
+
+  // Limpa todo o buffer
+  const clearAllBuffers = useCallback(() => {
+    audioBufferService.clearAllBuffers()
+    updateBufferInfo()
+  }, [updateBufferInfo])
+
+  // Fecha o painel de progresso do buffer
+  const closeBufferProgress = useCallback(() => {
+    setShowBufferProgress(false)
+  }, [])
+
   const value = {
     currentTrack,
     isPlaying,
@@ -754,7 +839,17 @@ export const PlayerProvider = ({ children }) => {
     removeTrack,
     handlePlayerError,
     removeTrackFromPlaylist,
-    hasQueue: queue.length > 1
+    hasQueue: queue.length > 1,
+    isBuffering,
+    bufferProgress,
+    showBufferProgress,
+    bufferInfo,
+    startBuffer,
+    isTrackBuffered,
+    getBufferedAudio,
+    clearTrackBuffer,
+    clearAllBuffers,
+    closeBufferProgress
   }
   
   return (
@@ -767,6 +862,14 @@ export const PlayerProvider = ({ children }) => {
           duration={5000}
         />
       )}
+      <BufferProgress
+        isVisible={showBufferProgress}
+        isBuffering={isBuffering}
+        progress={bufferProgress}
+        currentTrack={currentTrack}
+        bufferInfo={bufferInfo}
+        onClose={closeBufferProgress}
+      />
     </PlayerContext.Provider>
   )
 }

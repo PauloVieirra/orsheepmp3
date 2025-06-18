@@ -4,12 +4,13 @@ import { useNavigate } from 'react-router-dom'
 import { usePlayer } from '../contexts/PlayerContext'
 import { useStorage } from '../contexts/StorageContext'
 import { useApiKey } from '../contexts/ApiKeyContext'
-import { AiOutlineInfoCircle, AiOutlineEye, AiOutlineEyeInvisible, AiOutlineLinkedin, AiOutlineUser } from 'react-icons/ai'
+import { AiOutlineInfoCircle, AiOutlineEye, AiOutlineEyeInvisible, AiOutlineLinkedin, AiOutlineUser, AiOutlineCloudDownload } from 'react-icons/ai'
 import { BiCheck } from 'react-icons/bi'
 import { MdOutlineStorage } from 'react-icons/md'
 import { IoArrowBack } from 'react-icons/io5'
 import { FaQuoteLeft, FaQuoteRight } from 'react-icons/fa'
 import audioService from '../services/AudioService'
+import BufferSettings from '../components/BufferSettings'
 
 const Container = styled.div`
   padding: 20px;
@@ -489,83 +490,107 @@ const SocialLinks = styled.div`
 
 const Settings = () => {
   const navigate = useNavigate()
-  const { clearCache } = useStorage()
-  const { apiKey, updateApiKey, isLoading } = useApiKey()
-  const [offlineMode, setOfflineMode] = useState(false)
-  const [backgroundPlay, setBackgroundPlay] = useState(() => {
-    try {
-      const settings = JSON.parse(localStorage.getItem('appSettings') || '{}')
-      return settings.backgroundPlay ?? true
-    } catch {
-      return true
-    }
-  })
-  const [storageUsage, setStorageUsage] = useState(null)
+  const { 
+    backgroundPlay, 
+    offlineMode, 
+    clearAllBuffers, 
+    clearTrackBuffer, 
+    bufferInfo, 
+    currentTrack 
+  } = usePlayer()
+  const { getSettings, saveSettings } = useStorage()
+  const { apiKey, setApiKey } = useApiKey()
+  const [localApiKey, setLocalApiKey] = useState(apiKey || '')
+  const [showApiKey, setShowApiKey] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [hasChanges, setHasChanges] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
   const [showClearModal, setShowClearModal] = useState(false)
   const [clearOptions, setClearOptions] = useState({
     playlists: false,
     tracks: false
   })
-  const [localApiKey, setLocalApiKey] = useState('')
-  const [showApiKey, setShowApiKey] = useState(false)
-  const [notification, setNotification] = useState(null)
-  const [hasChanges, setHasChanges] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  const [storageUsage, setStorageUsage] = useState(null)
+  const [showBufferSettings, setShowBufferSettings] = useState(false)
 
   useEffect(() => {
-    if (!isLoading) {
-      setLocalApiKey(apiKey || '')
+    loadSettings()
+    checkStorageUsage()
+  }, [])
+
+  useEffect(() => {
+    setHasChanges(localApiKey !== apiKey)
+  }, [localApiKey, apiKey])
+
+  const loadSettings = async () => {
+    try {
+      setIsLoading(true)
+      const settings = await getSettings()
+      if (settings) {
+        audioService.setBackgroundPlayEnabled(settings.backgroundPlay || false)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar configurações:', error)
+    } finally {
+      setIsLoading(false)
     }
-  }, [apiKey, isLoading])
+  }
+
+  const checkStorageUsage = async () => {
+    try {
+      if ('storage' in navigator && 'estimate' in navigator.storage) {
+        const estimate = await navigator.storage.estimate()
+        setStorageUsage({
+          used: estimate.usage || 0,
+          total: estimate.quota || 0
+        })
+      }
+    } catch (error) {
+      console.error('Erro ao verificar uso de armazenamento:', error)
+    }
+  }
 
   const handleApiKeyChange = (e) => {
-    const value = e.target.value.trim()
-    setLocalApiKey(value)
-    setHasChanges(value !== apiKey)
+    setLocalApiKey(e.target.value)
   }
 
   const handleSaveApiKey = async () => {
-    if (!localApiKey) return
-
-    setIsSaving(true)
     try {
-      const success = await updateApiKey(localApiKey)
-      if (success) {
-        setHasChanges(false)
-        showNotification(true, 'API key salva com sucesso!')
-      } else {
-        showNotification(false, 'Erro ao salvar API key. Tente novamente.')
-      }
+      setIsSaving(true)
+      await setApiKey(localApiKey)
+      showNotification(true, 'Chave da API salva com sucesso!')
     } catch (error) {
-      console.error('Erro ao salvar API key:', error)
-      showNotification(false, 'Erro ao salvar API key. Tente novamente.')
+      console.error('Erro ao salvar chave da API:', error)
+      showNotification(false, 'Erro ao salvar chave da API')
     } finally {
       setIsSaving(false)
     }
   }
 
   const showNotification = (success, message) => {
-    setNotification({ success, message })
-    setTimeout(() => setNotification(null), 3000)
-  }
-
-  const handleToggleOfflineMode = () => {
-    const newValue = !offlineMode
-    setOfflineMode(newValue)
-    saveSettings({ offlineMode: newValue })
+    // Implementar notificação se necessário
+    console.log(message)
   }
 
   const handleToggleBackgroundPlay = () => {
     const newValue = !backgroundPlay
-    setBackgroundPlay(newValue)
     audioService.setBackgroundPlayEnabled(newValue)
+    handleSaveSettings({ backgroundPlay: newValue })
   }
 
-  const saveSettings = (newSettings) => {
-    const currentSettings = JSON.parse(localStorage.getItem('appSettings') || '{}')
-    const updatedSettings = { ...currentSettings, ...newSettings }
-    localStorage.setItem('appSettings', JSON.stringify(updatedSettings))
+  const handleSaveSettings = async (newSettings) => {
+    try {
+      const currentSettings = await getSettings() || {}
+      const updatedSettings = { ...currentSettings, ...newSettings }
+      await saveSettings(updatedSettings)
+    } catch (error) {
+      console.error('Erro ao salvar configurações:', error)
+    }
+  }
+
+  const handleToggleOfflineMode = () => {
+    handleSaveSettings({ offlineMode: !offlineMode })
   }
 
   const handleClearCache = async () => {
@@ -573,28 +598,38 @@ const Settings = () => {
   }
 
   const handleConfirmClear = async () => {
-    setIsClearing(true)
     try {
+      setIsClearing(true)
+      
       if (clearOptions.playlists) {
+        // Limpar playlists
         localStorage.removeItem('playlists')
       }
+      
       if (clearOptions.tracks) {
-        localStorage.removeItem('recentTracks')
-        localStorage.removeItem('lastSearchResults')
-        localStorage.removeItem('lastSearchTerm')
+        // Limpar cache de músicas
         if ('caches' in window) {
-          const cacheKeys = await caches.keys()
-          await Promise.all(cacheKeys.map(key => caches.delete(key)))
+          const cacheNames = await caches.keys()
+          await Promise.all(cacheNames.map(name => caches.delete(name)))
+        }
+        
+        // Limpar IndexedDB
+        if ('indexedDB' in window) {
+          indexedDB.deleteDatabase('orsheepmp3')
         }
       }
-      alert('Cache limpo com sucesso!')
-    } catch (error) {
-      console.error('Erro ao limpar cache:', error)
-      alert('Erro ao limpar cache. Tente novamente.')
-    } finally {
-      setIsClearing(false)
+      
       setShowClearModal(false)
       setClearOptions({ playlists: false, tracks: false })
+      showNotification(true, 'Cache limpo com sucesso!')
+      
+      // Recarregar informações de armazenamento
+      checkStorageUsage()
+    } catch (error) {
+      console.error('Erro ao limpar cache:', error)
+      showNotification(false, 'Erro ao limpar cache')
+    } finally {
+      setIsClearing(false)
     }
   }
 
@@ -604,6 +639,12 @@ const Settings = () => {
     const sizes = ['B', 'KB', 'MB', 'GB']
     const i = Math.floor(Math.log(bytes) / Math.log(k))
     return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`
+  }
+
+  const handleBufferSettings = (info, track) => {
+    setBufferInfo(info)
+    setCurrentTrack(track)
+    setShowBufferSettings(true)
   }
 
   return (
@@ -691,6 +732,36 @@ const Settings = () => {
             </ApiKeyInput>
           </div>
         </SettingItem>
+      </Section>
+
+      <Section>
+        <h2>
+          <AiOutlineCloudDownload />
+          Buffer de Áudio
+        </h2>
+        <SettingItem>
+          <div className="setting-info">
+            <h3>Sistema de Buffer</h3>
+            <p>Carrega automaticamente até 20 minutos de áudio para reprodução offline</p>
+          </div>
+          <Button 
+            onClick={() => setShowBufferSettings(!showBufferSettings)}
+          >
+            Configurar
+          </Button>
+        </SettingItem>
+        {showBufferSettings && (
+          <div style={{ marginTop: '16px' }}>
+            <BufferSettings
+              bufferInfo={bufferInfo}
+              onClearAllBuffers={clearAllBuffers}
+              onClearTrackBuffer={clearTrackBuffer}
+              currentTrack={currentTrack}
+              isEnabled={true}
+              onToggleEnabled={() => {}}
+            />
+          </div>
+        )}
       </Section>
 
       <Section>
