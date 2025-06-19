@@ -151,6 +151,76 @@ export const PlayerProvider = ({ children }) => {
     setCurrentQueueIndex(0)
   }, [])
 
+  // Configura os callbacks do buffer
+  const setupBufferCallbacks = useCallback(() => {
+    audioBufferService.setCallbacks({
+      onProgress: (progress) => {
+        setBufferProgress(progress)
+        setShowBufferProgress(true)
+      },
+      onComplete: (track) => {
+        setIsBuffering(false)
+        setBufferProgress(100)
+        setShowBufferProgress(false)
+        updateBufferInfo()
+        console.log(`Buffer completo para: ${track.title}`)
+      },
+      onError: (track, error) => {
+        setIsBuffering(false)
+        setShowBufferProgress(false)
+        console.error(`Erro no buffer de ${track.title}:`, error)
+      }
+    })
+  }, [])
+
+  // Atualiza informações do buffer
+  const updateBufferInfo = useCallback(() => {
+    const info = audioBufferService.getBufferInfo()
+    setBufferInfo(info)
+  }, [])
+
+  // Inicia o buffer para uma faixa
+  const startBuffer = useCallback(async (track, queueTracks = []) => {
+    if (!track) return
+    setIsBuffering(true)
+    setBufferProgress(0)
+    setShowBufferProgress(true)
+    try {
+      await audioBufferService.startBuffer(track, queueTracks)
+    } catch (error) {
+      console.error('Erro ao iniciar buffer:', error)
+      setIsBuffering(false)
+      setShowBufferProgress(false)
+    }
+  }, [])
+
+  // Verifica se uma faixa está em buffer
+  const isTrackBuffered = useCallback((trackId) => {
+    return audioBufferService.isTrackBuffered(trackId)
+  }, [])
+
+  // Obtém áudio bufferizado
+  const getBufferedAudio = useCallback((trackId) => {
+    return audioBufferService.getBufferedAudio(trackId)
+  }, [])
+
+  // Limpa buffer de uma faixa
+  const clearTrackBuffer = useCallback((trackId) => {
+    audioBufferService.clearTrackBuffer(trackId)
+    updateBufferInfo()
+  }, [updateBufferInfo])
+
+  // Limpa todo o buffer
+  const clearAllBuffers = useCallback(() => {
+    audioBufferService.clearAllBuffers()
+    updateBufferInfo()
+  }, [updateBufferInfo])
+
+  // Fecha o painel de progresso do buffer
+  const closeBufferProgress = useCallback(() => {
+    setShowBufferProgress(false)
+  }, [])
+
   const playTrack = useCallback(async (track, shouldAutoPlay = true, playlistTracks = [], index = -1, shouldNavigate = false) => {
     try {
       clearError()
@@ -732,78 +802,6 @@ export const PlayerProvider = ({ children }) => {
       return null
     }
   }, [currentPlaylist, queue, currentQueueIndex, currentTrack, playerInstance, getStoragePlaylists, savePlaylists, playTrack])
-
-  // Configura os callbacks do buffer
-  const setupBufferCallbacks = useCallback(() => {
-    audioBufferService.setCallbacks({
-      onProgress: (progress) => {
-        setBufferProgress(progress)
-        setShowBufferProgress(true)
-      },
-      onComplete: (track) => {
-        setIsBuffering(false)
-        setBufferProgress(100)
-        setShowBufferProgress(false)
-        updateBufferInfo()
-        console.log(`Buffer completo para: ${track.title}`)
-      },
-      onError: (track, error) => {
-        setIsBuffering(false)
-        setShowBufferProgress(false)
-        console.error(`Erro no buffer de ${track.title}:`, error)
-      }
-    })
-  }, [])
-
-  // Atualiza informações do buffer
-  const updateBufferInfo = useCallback(() => {
-    const info = audioBufferService.getBufferInfo()
-    setBufferInfo(info)
-  }, [])
-
-  // Inicia o buffer para uma faixa
-  const startBuffer = useCallback(async (track, queueTracks = []) => {
-    if (!track) return
-    
-    setIsBuffering(true)
-    setBufferProgress(0)
-    setShowBufferProgress(true)
-    
-    try {
-      await audioBufferService.startBuffer(track, queueTracks)
-    } catch (error) {
-      console.error('Erro ao iniciar buffer:', error)
-      setIsBuffering(false)
-      setShowBufferProgress(false)
-    }
-  }, [])
-
-  // Verifica se uma faixa está em buffer
-  const isTrackBuffered = useCallback((trackId) => {
-    return audioBufferService.isTrackBuffered(trackId)
-  }, [])
-
-  // Obtém áudio bufferizado
-  const getBufferedAudio = useCallback((trackId) => {
-    return audioBufferService.getBufferedAudio(trackId)
-  }, [])
-
-  // Limpa buffer de uma faixa
-  const clearTrackBuffer = useCallback((trackId) => {
-    audioBufferService.clearTrackBuffer(trackId)
-    updateBufferInfo()
-  }, [updateBufferInfo])
-
-  // Limpa todo o buffer
-  const clearAllBuffers = useCallback(() => {
-    audioBufferService.clearAllBuffers()
-    updateBufferInfo()
-  }, [updateBufferInfo])
-
-  // Fecha o painel de progresso do buffer
-  const closeBufferProgress = useCallback(() => {
-    setShowBufferProgress(false)
-  }, [])
 
   const value = {
     currentTrack,
