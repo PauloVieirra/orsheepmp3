@@ -3,10 +3,11 @@ import styled from 'styled-components'
 import { usePlayer } from '../contexts/PlayerContext'
 import { AiOutlineSearch, AiOutlineHeart, AiFillHeart, AiOutlineHistory, AiOutlineClose, AiOutlineUnorderedList, AiOutlineDatabase, AiOutlineHdd, AiOutlineClockCircle } from 'react-icons/ai'
 import { useNavigate } from 'react-router-dom'
-import Notification from '../components/Notification'
 import { useApiKey } from '../contexts/ApiKeyContext'
 import { useInterests } from '../contexts/InterestsContext'
 import { useStorage } from '../contexts/StorageContext'
+import { useNotification } from '../contexts/NotificationContext'
+import AddToPlaylistModal from '../components/AddToPlaylistModal'
 
 const SearchContainer = styled.div`
   padding: 20px;
@@ -348,7 +349,6 @@ const Search = () => {
   const [selectedTrack, setSelectedTrack] = useState(null)
   const [showPlaylistModal, setShowPlaylistModal] = useState(false)
   const [playlists, setPlaylists] = useState([])
-  const [notification, setNotification] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
@@ -368,10 +368,7 @@ const Search = () => {
   })
   const { addToInterests, isInInterests } = useInterests()
   const { getPlaylists, savePlaylists } = useStorage()
-
-  const showNotification = (type, title, message) => {
-    setNotification({ type, title, message })
-  }
+  const { showNotification } = useNotification()
 
   useEffect(() => {
     const loadPlaylists = async () => {
@@ -877,15 +874,6 @@ const Search = () => {
             </ModalButton>
           </PlaylistModal>
         </>
-      )}
-
-      {notification && (
-        <Notification
-          type={notification.type}
-          title={notification.title}
-          message={notification.message}
-          onClose={() => setNotification(null)}
-        />
       )}
     </SearchContainer>
   )

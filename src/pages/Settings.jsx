@@ -4,12 +4,12 @@ import { useNavigate } from 'react-router-dom'
 import { usePlayer } from '../contexts/PlayerContext'
 import { useStorage } from '../contexts/StorageContext'
 import { useApiKey } from '../contexts/ApiKeyContext'
+import { useNotification } from '../contexts/NotificationContext'
 import { AiOutlineInfoCircle, AiOutlineEye, AiOutlineEyeInvisible, AiOutlineLinkedin, AiOutlineUser, AiOutlineCloudDownload } from 'react-icons/ai'
 import { BiCheck } from 'react-icons/bi'
 import { MdOutlineStorage } from 'react-icons/md'
 import { IoArrowBack } from 'react-icons/io5'
 import { FaQuoteLeft, FaQuoteRight } from 'react-icons/fa'
-import audioService from '../services/AudioService'
 import BufferSettings from '../components/BufferSettings'
 
 const Container = styled.div`
@@ -496,10 +496,12 @@ const Settings = () => {
     clearAllBuffers, 
     clearTrackBuffer, 
     bufferInfo, 
-    currentTrack 
+    currentTrack,
+    toggleBackgroundPlay
   } = usePlayer()
   const { getSettings, saveSettings } = useStorage()
-  const { apiKey, setApiKey } = useApiKey()
+  const { apiKey, updateApiKey } = useApiKey()
+  const { showNotification } = useNotification()
   const [localApiKey, setLocalApiKey] = useState(apiKey || '')
   const [showApiKey, setShowApiKey] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -527,9 +529,6 @@ const Settings = () => {
     try {
       setIsLoading(true)
       const settings = await getSettings()
-      if (settings) {
-        audioService.setBackgroundPlayEnabled(settings.backgroundPlay || false)
-      }
     } catch (error) {
       console.error('Erro ao carregar configurações:', error)
     } finally {
@@ -558,25 +557,14 @@ const Settings = () => {
   const handleSaveApiKey = async () => {
     try {
       setIsSaving(true)
-      await setApiKey(localApiKey)
-      showNotification(true, 'Chave da API salva com sucesso!')
+      await updateApiKey(localApiKey)
+      showNotification('success', 'Chave da API salva com sucesso!')
     } catch (error) {
       console.error('Erro ao salvar chave da API:', error)
-      showNotification(false, 'Erro ao salvar chave da API')
+      showNotification('error', 'Erro ao salvar chave da API')
     } finally {
       setIsSaving(false)
     }
-  }
-
-  const showNotification = (success, message) => {
-    // Implementar notificação se necessário
-    console.log(message)
-  }
-
-  const handleToggleBackgroundPlay = () => {
-    const newValue = !backgroundPlay
-    audioService.setBackgroundPlayEnabled(newValue)
-    handleSaveSettings({ backgroundPlay: newValue })
   }
 
   const handleSaveSettings = async (newSettings) => {
@@ -621,13 +609,13 @@ const Settings = () => {
       
       setShowClearModal(false)
       setClearOptions({ playlists: false, tracks: false })
-      showNotification(true, 'Cache limpo com sucesso!')
+      showNotification('success', 'Cache limpo com sucesso!')
       
       // Recarregar informações de armazenamento
       checkStorageUsage()
     } catch (error) {
       console.error('Erro ao limpar cache:', error)
-      showNotification(false, 'Erro ao limpar cache')
+      showNotification('error', 'Erro ao limpar cache')
     } finally {
       setIsClearing(false)
     }
@@ -670,7 +658,7 @@ const Settings = () => {
           </div>
           <Switch 
             $active={backgroundPlay} 
-            onClick={handleToggleBackgroundPlay}
+            onClick={toggleBackgroundPlay}
             aria-label="Alternar reprodução em segundo plano"
           >
             <span style={{ display: 'none' }}>
@@ -844,12 +832,7 @@ const Settings = () => {
       )}
 
       <AboutSection>
-       
-        
         <AboutText>
-          <p>
-           
-          </p>
           <p>
             Esse trabalho foi desenvolvido como caso de estudo, unindo UI Design com Inteligência 
             Artificial no desenvolvimento do aplicativo Orsheemp3, um tocador de música Web App (WPA) 
@@ -864,9 +847,7 @@ const Settings = () => {
         </AboutText>
 
         <Quote>
-         
           "O bom design é aquele que comunica claramente sua função."
-         
           <br />— Donald Norman
         </Quote>
 

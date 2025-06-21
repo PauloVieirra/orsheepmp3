@@ -3,6 +3,7 @@ import styled from 'styled-components'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { usePlayer } from '../contexts/PlayerContext'
 import { useStorage } from '../contexts/StorageContext'
+import { useNotification } from '../contexts/NotificationContext'
 import { AiOutlineArrowLeft, AiOutlinePlus, AiOutlineStepBackward, AiOutlineStepForward, AiFillPlayCircle, AiFillPauseCircle, AiOutlineHeart, AiFillHeart, AiOutlineCloud, AiOutlineDownload, AiOutlineSync } from 'react-icons/ai'
 import { BiShuffle, BiRepeat } from 'react-icons/bi'
 import AddToPlaylistModal from '../components/AddToPlaylistModal'
@@ -408,6 +409,7 @@ const PlayerPage = () => {
     toggleAutoPlay
   } = usePlayer()
   const { getFavoriteTracks, saveFavoriteTracks } = useStorage()
+  const { showLiked, showUnliked, showSuccess, showError } = useNotification()
   const [isFavorite, setIsFavorite] = useState(false)
   const [showPlaylistModal, setShowPlaylistModal] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
@@ -455,13 +457,13 @@ const PlayerPage = () => {
         const success = await DownloadService.downloadMusic(currentTrack)
         if (success) {
           setIsDownloaded(true)
-          alert('Música baixada com sucesso!')
+          showSuccess('Música baixada com sucesso!')
         } else {
-          alert('Não foi possível baixar a música. Tente novamente.')
+          showError('Não foi possível baixar a música. Tente novamente.')
         }
       } catch (error) {
         console.error('Erro ao baixar:', error)
-        alert('Erro ao baixar a música. Tente novamente.')
+        showError('Erro ao baixar a música. Tente novamente.')
       } finally {
         setIsDownloading(false)
       }
@@ -500,9 +502,11 @@ const PlayerPage = () => {
     if (trackIndex === -1) {
       // Adiciona aos favoritos
       newFavorites = [...favorites, { ...currentTrack, addedAt: new Date().toISOString() }]
+      showLiked()
     } else {
       // Remove dos favoritos
       newFavorites = favorites.filter(fav => fav.id !== currentTrack.id)
+      showUnliked()
     }
     
     await saveFavoriteTracks(newFavorites)

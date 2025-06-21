@@ -5,6 +5,7 @@ import ErrorNotification from '../components/ErrorNotification'
 import BufferProgress from '../components/BufferProgress'
 import { setupMediaSession, updateMediaSessionState, updatePositionState } from '../services/MediaSessionService'
 import audioBufferService from '../services/AudioBufferService'
+import audioService from '../services/AudioService'
 
 const PlayerContext = createContext({})
 
@@ -19,6 +20,7 @@ export const PlayerProvider = ({ children }) => {
   const [currentTrackIndex, setCurrentTrackIndex] = useState(-1)
   const [autoPlay, setAutoPlay] = useState(false)
   const [shuffle, setShuffle] = useState(false)
+  const [backgroundPlay, setBackgroundPlay] = useState(false)
   const [queue, setQueue] = useState([])
   const [currentQueueIndex, setCurrentQueueIndex] = useState(0)
   const [userAction, setUserAction] = useState(null)
@@ -63,6 +65,7 @@ export const PlayerProvider = ({ children }) => {
       const settings = await getSettings()
       setAutoPlay(settings?.autoPlay ?? false)
       setVolume(settings?.volume ?? 1)
+      setBackgroundPlay(settings?.backgroundPlay ?? false)
     } catch (error) {
       console.error('Erro ao carregar configurações:', error)
     }
@@ -803,6 +806,18 @@ export const PlayerProvider = ({ children }) => {
     }
   }, [currentPlaylist, queue, currentQueueIndex, currentTrack, playerInstance, getStoragePlaylists, savePlaylists, playTrack])
 
+  const toggleBackgroundPlay = useCallback(async () => {
+    try {
+      const newValue = !backgroundPlay
+      setBackgroundPlay(newValue)
+      audioService.setBackgroundPlayEnabled(newValue)
+      const settings = await getSettings()
+      await saveSettings({ ...settings, backgroundPlay: newValue })
+    } catch (error) {
+      console.error('Erro ao salvar configuração de backgroundPlay:', error)
+    }
+  }, [backgroundPlay, getSettings, saveSettings])
+
   const value = {
     currentTrack,
     isPlaying,
@@ -812,6 +827,7 @@ export const PlayerProvider = ({ children }) => {
     currentTrackIndex,
     autoPlay,
     shuffle,
+    backgroundPlay,
     playTrack,
     togglePlay,
     seekTo,
@@ -822,6 +838,7 @@ export const PlayerProvider = ({ children }) => {
     createPlaylist,
     getPlaylists,
     toggleAutoPlay,
+    toggleBackgroundPlay,
     toggleShuffle: () => setShuffle(prev => !prev),
     queue,
     setQueue: handleSetQueue,

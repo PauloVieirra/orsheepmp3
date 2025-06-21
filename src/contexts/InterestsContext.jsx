@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { useStorage } from './StorageContext'
+import { useNotification } from './NotificationContext'
 
 const InterestsContext = createContext({})
 
@@ -7,6 +8,7 @@ export const InterestsProvider = ({ children }) => {
   const [interests, setInterests] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const { getRecentTracks } = useStorage()
+  const { showInterestAdded, showInterestRemoved, showError } = useNotification()
 
   // Carrega os interesses do localStorage
   useEffect(() => {
@@ -48,27 +50,34 @@ export const InterestsProvider = ({ children }) => {
         }
         const newInterests = [newTrack, ...currentInterests]
         saveInterests(newInterests)
+        showInterestAdded(track.title)
         return true
       }
       return false
     } catch (error) {
       console.error('Erro ao adicionar aos interesses:', error)
+      showError('Erro ao adicionar aos interesses')
       return false
     }
-  }, [saveInterests])
+  }, [saveInterests, showInterestAdded, showError])
 
   // Remove uma música dos interesses
   const removeFromInterests = useCallback((trackId) => {
     try {
       const currentInterests = JSON.parse(localStorage.getItem('interests') || '[]')
+      const trackToRemove = currentInterests.find(track => track.id === trackId)
       const newInterests = currentInterests.filter(track => track.id !== trackId)
       saveInterests(newInterests)
+      if (trackToRemove) {
+        showInterestRemoved(trackToRemove.title)
+      }
       return true
     } catch (error) {
       console.error('Erro ao remover dos interesses:', error)
+      showError('Erro ao remover dos interesses')
       return false
     }
-  }, [saveInterests])
+  }, [saveInterests, showInterestRemoved, showError])
 
   // Verifica se uma música está nos interesses
   const isInInterests = useCallback((trackId) => {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import styled from 'styled-components'
 import { useStorage } from '../contexts/StorageContext'
+import { useNotification } from '../contexts/NotificationContext'
 
 const Modal = styled.div`
   position: fixed;
@@ -112,6 +113,7 @@ const Input = styled.input`
 
 const AddToPlaylistModal = ({ track, onClose }) => {
   const { getPlaylists, savePlaylists } = useStorage()
+  const { showAddedToPlaylist, showError, showSuccess } = useNotification()
   const [playlists, setPlaylists] = useState([])
   const [newPlaylistName, setNewPlaylistName] = useState('')
   const [showNewPlaylistInput, setShowNewPlaylistInput] = useState(false)
@@ -139,12 +141,12 @@ const AddToPlaylistModal = ({ track, onClose }) => {
       const success = await savePlaylists(updatedPlaylists)
       if (success) {
         setPlaylists(updatedPlaylists)
-        alert('Música adicionada à playlist!')
+        showAddedToPlaylist(playlist.name)
       } else {
-        alert('Erro ao adicionar música à playlist. Tente novamente.')
+        showError('Erro ao adicionar música à playlist. Tente novamente.')
       }
     } else {
-      alert('Esta música já está na playlist!')
+      showError('Esta música já está na playlist!')
     }
     onClose()
   }
@@ -162,10 +164,10 @@ const AddToPlaylistModal = ({ track, onClose }) => {
       
       if (success) {
         setPlaylists(updatedPlaylists)
-        alert('Playlist criada com sucesso!')
+        showSuccess(`Playlist "${newPlaylistName.trim()}" criada com sucesso!`)
         onClose()
       } else {
-        alert('Erro ao criar playlist. Tente novamente.')
+        showError('Erro ao criar playlist. Tente novamente.')
       }
     }
   }

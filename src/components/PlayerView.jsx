@@ -30,6 +30,11 @@ const PlayerViewContainer = styled.div`
     from { transform: translateY(100%); }
     to { transform: translateY(0); }
   }
+
+  @media (max-width: 600px) {
+    padding: 8px;
+    grid-template-rows: auto 1fr auto;
+  }
 `
 
 const CloseButton = styled.button`
@@ -48,6 +53,13 @@ const CloseButton = styled.button`
   
   &:hover {
     transform: scale(1.1);
+  }
+
+  @media (max-width: 600px) {
+    top: 10px;
+    right: 10px;
+    font-size: 1.2rem;
+    padding: 6px;
   }
 `
 
@@ -69,6 +81,13 @@ const AddToPlaylistButton = styled.button`
     transform: scale(1.1);
     color: #1db954;
   }
+
+  @media (max-width: 600px) {
+    top: 10px;
+    right: 48px;
+    font-size: 1.2rem;
+    padding: 6px;
+  }
 `
 
 const AutoPlayButton = styled.button`
@@ -89,6 +108,13 @@ const AutoPlayButton = styled.button`
     transform: scale(1.1);
     color: #1db954;
   }
+
+  @media (max-width: 600px) {
+    top: 10px;
+    right: 86px;
+    font-size: 1.2rem;
+    padding: 6px;
+  }
 `
 
 const CoverArt = styled.div`
@@ -103,6 +129,15 @@ const CoverArt = styled.div`
     object-fit: cover;
     border-radius: 8px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+
+  @media (max-width: 600px) {
+    max-width: 90vw;
+    margin: 16px auto 12px auto;
+    img {
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
   }
 `
 
@@ -121,6 +156,16 @@ const TrackInfo = styled.div`
     font-size: 1rem;
     color: rgba(255, 255, 255, 0.7);
   }
+
+  @media (max-width: 600px) {
+    margin: 10px 0;
+    h2 {
+      font-size: 1.1rem;
+    }
+    p {
+      font-size: 0.9rem;
+    }
+  }
 `
 
 const Controls = styled.div`
@@ -130,6 +175,11 @@ const Controls = styled.div`
   gap: 24px;
   padding: 20px 0;
   position: relative;
+
+  @media (max-width: 600px) {
+    gap: 12px;
+    padding: 10px 0 0 0;
+  }
 `
 
 const ControlButton = styled.button`
@@ -156,6 +206,10 @@ const ControlButton = styled.button`
       color: white;
     }
   }
+
+  @media (max-width: 600px) {
+    font-size: ${props => props.$primary ? '2.5rem' : '1.2rem'};
+  }
 `
 
 const ExtraControls = styled.div`
@@ -163,6 +217,10 @@ const ExtraControls = styled.div`
   right: 0;
   display: flex;
   gap: 16px;
+
+  @media (max-width: 600px) {
+    gap: 8px;
+  }
 `
 
 const ExtraButton = styled(ControlButton)`
@@ -172,12 +230,26 @@ const ExtraButton = styled(ControlButton)`
   &:hover {
     color: ${props => props.$active ? '#1db954' : '#ffffff'};
   }
+
+  @media (max-width: 600px) {
+    font-size: 1rem;
+  }
 `
 
 const Progress = styled.div`
   height: 100%;
   background: #1db954;
   border-radius: 2px;
+`
+
+const BufferBar = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: rgba(29, 185, 84, 0.3); /* cor suave do buffer */
+  border-radius: 2px;
+  z-index: 1;
 `
 
 const ProgressBar = styled.div`
@@ -188,6 +260,11 @@ const ProgressBar = styled.div`
   cursor: pointer;
   position: relative;
   margin: 20px 0;
+
+  @media (max-width: 600px) {
+    margin: 10px 0;
+    height: 3px;
+  }
 `
 
 const TimeDisplay = styled.div`
@@ -196,6 +273,11 @@ const TimeDisplay = styled.div`
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.9rem;
   margin-top: 8px;
+
+  @media (max-width: 600px) {
+    font-size: 0.8rem;
+    margin-top: 4px;
+  }
 `
 
 const Overlay = styled.div`
@@ -224,12 +306,25 @@ const Modal = styled.div`
     color: white;
     text-align: center;
   }
+
+  @media (max-width: 600px) {
+    width: 90vw;
+    padding: 12px;
+    h3 {
+      font-size: 1rem;
+    }
+  }
 `
 
 const PlaylistModal = styled(Modal)`
   .playlist-list {
     max-height: 300px;
     overflow-y: auto;
+  }
+  @media (max-width: 600px) {
+    .playlist-list {
+      max-height: 50vw;
+    }
   }
 `
 
@@ -267,6 +362,17 @@ const PlaylistItem = styled.div`
       color: rgba(255, 255, 255, 0.7);
     }
   }
+  @media (max-width: 600px) {
+    padding: 8px;
+    img {
+      width: 36px;
+      height: 36px;
+      margin-right: 8px;
+    }
+    .info h4 {
+      font-size: 0.9rem;
+    }
+  }
 `
 
 const PlayerView = ({ onClose }) => {
@@ -287,7 +393,8 @@ const PlayerView = ({ onClose }) => {
     shuffle,
     toggleAutoPlay,
     toggleShuffle,
-    restartTrack
+    restartTrack,
+    bufferProgress
   } = usePlayer()
 
   const formatTime = (seconds) => {
@@ -316,7 +423,8 @@ const PlayerView = ({ onClose }) => {
       </TrackInfo>
 
       <ProgressBar onClick={onSeek}>
-        <Progress style={{ width: `${(currentTime / duration) * 100}%` }} />
+        <BufferBar style={{ width: `${bufferProgress || 0}%` }} />
+        <Progress style={{ width: `${(currentTime / duration) * 100}%`, position: 'relative', zIndex: 2 }} />
       </ProgressBar>
 
       <TimeDisplay>

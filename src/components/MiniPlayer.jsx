@@ -132,6 +132,16 @@ const ProgressBar = styled.div.attrs(props => ({
   }
 `
 
+const BufferBar = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: rgba(29, 185, 84, 0.3); /* cor suave do buffer */
+  border-radius: 2px;
+  z-index: 1;
+`
+
 const MiniPlayer = () => {
   const navigate = useNavigate()
   const [showPlaylistModal, setShowPlaylistModal] = useState(false)
@@ -144,7 +154,8 @@ const MiniPlayer = () => {
     currentTime,
     duration,
     queue,
-    currentQueueIndex
+    currentQueueIndex,
+    bufferProgress
   } = usePlayer()
 
   const progress = duration ? (currentTime / duration) * 100 : 0
@@ -168,7 +179,10 @@ const MiniPlayer = () => {
   return (
     <>
       <Container>
-        <ProgressBar $progress={progress} />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3 }}>
+          <BufferBar style={{ width: `${bufferProgress || 0}%` }} />
+          <ProgressBar $progress={progress} style={{ position: 'relative', zIndex: 2 }} />
+        </div>
 
         <TrackInfo onClick={() => navigate('/player', { state: { track: currentTrack } })}>
           <img 
