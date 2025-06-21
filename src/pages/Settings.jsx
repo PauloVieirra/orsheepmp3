@@ -862,13 +862,6 @@ const Settings = () => {
           </a>
         </SocialLinks>
       </AboutSection>
-
-      {notification && (
-        <Notification $success={notification.success}>
-          {notification.success ? <BiCheck /> : <AiOutlineInfoCircle />}
-          {notification.message}
-        </Notification>
-      )}
     </Container>
   )
 }
