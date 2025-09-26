@@ -7,7 +7,8 @@ import {
   AiOutlineStepForward,
   AiOutlineSync,
   AiOutlineReload,
-  AiOutlineRandom
+  AiOutlineRandom,
+  AiOutlineDownload
 } from 'react-icons/ai'
 import { IoMdClose } from 'react-icons/io'
 import { MdPlaylistAdd } from 'react-icons/md'
@@ -112,6 +113,33 @@ const AutoPlayButton = styled.button`
   @media (max-width: 600px) {
     top: 10px;
     right: 86px;
+    font-size: 1.2rem;
+    padding: 6px;
+  }
+`
+
+const DownloadButton = styled.button`
+  position: absolute;
+  top: 20px;
+  right: 170px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  &:hover {
+    transform: scale(1.1);
+    color: #1db954;
+  }
+
+  @media (max-width: 600px) {
+    top: 10px;
+    right: 124px;
     font-size: 1.2rem;
     padding: 6px;
   }
@@ -375,6 +403,27 @@ const PlaylistItem = styled.div`
   }
 `
 
+const downloadAndStoreTrack = async (track) => {
+  try {
+    // Supondo que o backend forneça a URL do MP3
+    const response = await fetch(track.downloadUrl)
+    if (!response.ok) throw new Error('Erro ao baixar')
+    const blob = await response.blob()
+    // Salvar no IndexedDB (ou localStorage para protótipo)
+    const offlineTracks = JSON.parse(localStorage.getItem('offlineTracks') || '[]')
+    offlineTracks.push({
+      id: track.id,
+      title: track.title,
+      blobUrl: URL.createObjectURL(blob),
+      // Adicione outros metadados se necessário
+    })
+    localStorage.setItem('offlineTracks', JSON.stringify(offlineTracks))
+    alert('Música salva para ouvir offline!')
+  } catch (e) {
+    alert('Erro ao baixar música: ' + e.message)
+  }
+}
+
 const PlayerView = ({ onClose }) => {
   const [showPlaylistModal, setShowPlaylistModal] = useState(false)
   const { 
@@ -412,6 +461,9 @@ const PlayerView = ({ onClose }) => {
     <PlayerViewContainer>
       <CloseButton onClick={onClose}><IoMdClose /></CloseButton>
       <AddToPlaylistButton onClick={() => setShowPlaylistModal(true)}><MdPlaylistAdd /></AddToPlaylistButton>
+      <DownloadButton onClick={() => downloadAndStoreTrack(track)} title="Baixar para ouvir offline">
+        <AiOutlineDownload />
+      </DownloadButton>
 
       <CoverArt>
         <img src={`https://img.youtube.com/vi/${track.id}/maxresdefault.jpg`} alt={track.title} />

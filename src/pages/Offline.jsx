@@ -150,18 +150,24 @@ const Offline = () => {
     setOfflineTracks(tracks)
   }
 
-  const handlePlay = (track) => {
-    playTrack(track, true, [], -1, true)
-    navigate('/player', { state: { track } })
+  const handlePlay = async (track) => {
+    // Buscar o blob do IndexedDB
+    const blob = await DownloadService.getTrackBlob(track.id)
+    if (blob) {
+      const url = URL.createObjectURL(blob)
+      playTrack({ ...track, offlineUrl: url }, true, [], -1, true)
+      navigate('/player', { state: { track: { ...track, offlineUrl: url } } })
+    } else {
+      alert('Arquivo de áudio não encontrado offline!')
+    }
   }
 
   const handleDelete = async (track) => {
     if (window.confirm('Tem certeza que deseja remover esta música dos downloads? Esta ação não pode ser desfeita.')) {
       try {
+        await DownloadService.deleteOfflineTrack(track.id)
         const tracks = await DownloadService.getOfflineTracks()
-        const updatedTracks = tracks.filter(t => t.id !== track.id)
-        localStorage.setItem('offlineTracks', JSON.stringify(updatedTracks))
-        setOfflineTracks(updatedTracks)
+        setOfflineTracks(tracks)
       } catch (error) {
         console.error('Erro ao remover download:', error)
         alert('Erro ao remover o download. Tente novamente.')

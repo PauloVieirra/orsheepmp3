@@ -38,6 +38,54 @@ class DownloadService {
     }
   }
 
+  // IndexedDB helpers
+  openDB() {
+    return new Promise((resolve, reject) => {
+      const request = window.indexedDB.open('OfflineMusicDB', 1);
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains('tracks')) {
+          db.createObjectStore('tracks', { keyPath: 'id' });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async saveTrackBlob(trackId, blob) {
+    const db = await this.openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('tracks', 'readwrite');
+      const store = tx.objectStore('tracks');
+      store.put({ id: trackId, blob });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async getTrackBlob(trackId) {
+    const db = await this.openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('tracks', 'readonly');
+      const store = tx.objectStore('tracks');
+      const req = store.get(trackId);
+      req.onsuccess = () => resolve(req.result ? req.result.blob : null);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async deleteTrackBlob(trackId) {
+    const db = await this.openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('tracks', 'readwrite');
+      const store = tx.objectStore('tracks');
+      store.delete(trackId);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
   async downloadMusic(track) {
     try {
       // Verificar se já está baixada
@@ -45,7 +93,6 @@ class DownloadService {
       if (isDownloaded) {
         return { success: true, message: 'Música já está baixada' };
       }
-
       // Verificar se o servidor está online
       try {
         const healthCheck = await fetch(`${this.baseUrl}/health`);
@@ -57,7 +104,6 @@ class DownloadService {
           message: 'Não foi possível conectar ao servidor. Verifique se o servidor backend está em execução.' 
         };
       }
-
       // Iniciar o download
       const response = await fetch(`${this.baseUrl}/download/${track.id}`, {
         method: 'POST',
@@ -68,29 +114,15 @@ class DownloadService {
           title: track.title
         })
       });
-
       if (!response.ok) {
         const errorMessage = await response.text();
         throw new Error(`Erro no servidor: ${errorMessage}`);
       }
-
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      
-      // Criar link para download
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${track.title}.mp3`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      
-      // Limpar URL
-      window.URL.revokeObjectURL(url);
-
+      // Salvar blob no IndexedDB
+      await this.saveTrackBlob(track.id, blob);
       // Salvar informações da música baixada
       await this.saveOfflineTrack(track);
-      
       return { success: true, message: 'Download concluído com sucesso!' };
     } catch (error) {
       console.error('Erro ao baixar música:', error);
@@ -99,6 +131,15 @@ class DownloadService {
         message: error.message || 'Erro ao baixar música. Verifique sua conexão e tente novamente.' 
       };
     }
+  }
+
+  async deleteOfflineTrack(trackId) {
+    // Remove do localStorage
+    const offlineTracks = await this.getOfflineTracks();
+    const updatedTracks = offlineTracks.filter(t => t.id !== trackId);
+    localStorage.setItem('offlineTracks', JSON.stringify(updatedTracks));
+    // Remove do IndexedDB
+    await this.deleteTrackBlob(trackId);
   }
 }
 
