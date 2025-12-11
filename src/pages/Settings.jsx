@@ -499,9 +499,9 @@ const Settings = () => {
     toggleBackgroundPlay
   } = usePlayer()
   const { getSettings, saveSettings } = useStorage()
-  const { apiKey, updateApiKey } = useApiKey()
+  const { apiKey, updateApiKey, defaultApiKey } = useApiKey()
   const { showNotification } = useNotification()
-  const [localApiKey, setLocalApiKey] = useState(apiKey || '')
+  const [localApiKey, setLocalApiKey] = useState(defaultApiKey === apiKey ? '' : apiKey) // Ajuste na inicialização
   const [showApiKey, setShowApiKey] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)

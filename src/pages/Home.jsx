@@ -446,7 +446,7 @@ const Home = () => {
   const navigate = useNavigate()
   const { getPlaylists, getFavoriteTracks, playlistsVersion } = useStorage()
   const { playTrack, playPlaylist, currentTrack } = usePlayer()
-  const { apiKey, isLoadingApi } = useApiKey()
+  const { apiKey, isLoading: isApiKeyLoading } = useApiKey()
   const { interests, isLoading: isLoadingInterests } = useInterests()
   const [playlists, setPlaylists] = useState([])
   const [favoriteTracks, setFavoriteTracks] = useState([])
@@ -509,7 +509,7 @@ const Home = () => {
     return 'Boa noite'
   }
 
-  if (isLoading || isLoadingInterests) {
+  if (isApiKeyLoading || isLoadingInterests) {
     return (
       <HomeContainer>
         <div style={{ color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center', padding: '20px' }}>

@@ -24,6 +24,7 @@ export function useApiKey() {
 
 export const ApiKeyProvider = ({ children }) => {
   const [apiKey, setApiKey] = useState('')
+  const [defaultApiKey, setDefaultApiKey] = useState('') // Nova para a chave do .env
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -35,6 +36,9 @@ export const ApiKeyProvider = ({ children }) => {
       setIsLoading(true)
       
       const envApiKey = import.meta.env.VITE_YOUTUBE_API_KEY
+      if (envApiKey) {
+        setDefaultApiKey(envApiKey)
+      }
 
       let savedApiKey = await apiKeyStore.getItem('apiKey')
       
@@ -76,7 +80,8 @@ export const ApiKeyProvider = ({ children }) => {
     try {
       await apiKeyStore.removeItem('apiKey')
       localStorage.removeItem('apiKey') // Garante que também é removida do localStorage
-      setApiKey('')
+      // Ao limpar, volta para a chave padrão do ambiente, se houver
+      setApiKey(defaultApiKey)
       return true
     } catch (error) {
       console.error('Erro ao limpar API key:', error)
@@ -89,7 +94,8 @@ export const ApiKeyProvider = ({ children }) => {
       apiKey, 
       updateApiKey, 
       clearApiKey,
-      isLoading 
+      isLoading, 
+      defaultApiKey // Expor a chave do ambiente para o Settings
     }}>
       {children}
     </ApiKeyContext.Provider>
