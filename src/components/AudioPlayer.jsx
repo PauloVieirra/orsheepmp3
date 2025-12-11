@@ -2,7 +2,6 @@ import React from 'react'
 import styled from 'styled-components'
 import { usePlayer } from '../contexts/PlayerContext'
 import YouTubePlayer from './YouTubePlayer'
-import BufferedAudioPlayer from './BufferedAudioPlayer'
 
 const HiddenPlayer = styled.div`
   position: fixed;
@@ -22,30 +21,14 @@ const AudioPlayer = () => {
     handlePlayerError,
     onProgress,
     onDuration,
-    onEnded,
-    isTrackBuffered
+    onEnded
   } = usePlayer()
 
   if (!currentTrack) return null
 
-  // Verifica se a faixa está em buffer
-  const isBuffered = isTrackBuffered(currentTrack.id)
-
   return (
     <HiddenPlayer>
-      {/* Player de áudio bufferizado (quando disponível) */}
-      {isBuffered && (
-        <BufferedAudioPlayer
-          track={currentTrack}
-          isPlaying={isPlaying}
-          onProgress={onProgress}
-          onDuration={onDuration}
-          onEnded={onEnded}
-          onError={handlePlayerError}
-        />
-      )}
-      
-      {/* Player do YouTube (fallback) */}
+      {/* Apenas o player principal */}
       <YouTubePlayer
         videoId={currentTrack.id}
         onReady={onPlayerReady}

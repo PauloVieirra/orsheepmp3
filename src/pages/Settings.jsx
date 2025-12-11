@@ -10,7 +10,6 @@ import { BiCheck } from 'react-icons/bi'
 import { MdOutlineStorage } from 'react-icons/md'
 import { IoArrowBack } from 'react-icons/io5'
 import { FaQuoteLeft, FaQuoteRight } from 'react-icons/fa'
-import BufferSettings from '../components/BufferSettings'
 
 const Container = styled.div`
   padding: 20px;
@@ -514,7 +513,6 @@ const Settings = () => {
     tracks: false
   })
   const [storageUsage, setStorageUsage] = useState(null)
-  const [showBufferSettings, setShowBufferSettings] = useState(false)
 
   useEffect(() => {
     loadSettings()
@@ -629,12 +627,6 @@ const Settings = () => {
     return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`
   }
 
-  const handleBufferSettings = (info, track) => {
-    setBufferInfo(info)
-    setCurrentTrack(track)
-    setShowBufferSettings(true)
-  }
-
   return (
     <Container>
       <Header>
@@ -720,36 +712,6 @@ const Settings = () => {
             </ApiKeyInput>
           </div>
         </SettingItem>
-      </Section>
-
-      <Section>
-        <h2>
-          <AiOutlineCloudDownload />
-          Buffer de Áudio
-        </h2>
-        <SettingItem>
-          <div className="setting-info">
-            <h3>Sistema de Buffer</h3>
-            <p>Carrega automaticamente até 20 minutos de áudio para reprodução offline</p>
-          </div>
-          <Button 
-            onClick={() => setShowBufferSettings(!showBufferSettings)}
-          >
-            Configurar
-          </Button>
-        </SettingItem>
-        {showBufferSettings && (
-          <div style={{ marginTop: '16px' }}>
-            <BufferSettings
-              bufferInfo={bufferInfo}
-              onClearAllBuffers={clearAllBuffers}
-              onClearTrackBuffer={clearTrackBuffer}
-              currentTrack={currentTrack}
-              isEnabled={true}
-              onToggleEnabled={() => {}}
-            />
-          </div>
-        )}
       </Section>
 
       <Section>

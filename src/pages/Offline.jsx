@@ -148,6 +148,7 @@ const Offline = () => {
   const loadOfflineTracks = async () => {
     const tracks = await DownloadService.getOfflineTracks()
     setOfflineTracks(tracks)
+    console.log('Músicas offline carregadas:', tracks) // Adicionado console.log
   }
 
   const handlePlay = async (track) => {

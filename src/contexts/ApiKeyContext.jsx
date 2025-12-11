@@ -33,21 +33,23 @@ export const ApiKeyProvider = ({ children }) => {
   const loadApiKey = async () => {
     try {
       setIsLoading(true)
-      // Tenta carregar do LocalForage primeiro
+      
+      const envApiKey = import.meta.env.VITE_YOUTUBE_API_KEY
+
       let savedApiKey = await apiKeyStore.getItem('apiKey')
       
-      // Se não encontrar no LocalForage, tenta no localStorage (migração)
       if (!savedApiKey) {
         savedApiKey = localStorage.getItem('apiKey')
         if (savedApiKey) {
-          // Migra do localStorage para o LocalForage
           await apiKeyStore.setItem('apiKey', savedApiKey)
-          localStorage.removeItem('apiKey') // Remove do localStorage após migração
+          localStorage.removeItem('apiKey')
         }
       }
-
+      
       if (savedApiKey) {
         setApiKey(savedApiKey)
+      } else if (envApiKey) {
+        setApiKey(envApiKey)
       }
     } catch (error) {
       console.error('Erro ao carregar API key:', error)

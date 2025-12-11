@@ -86,6 +86,27 @@ class DownloadService {
     });
   }
 
+ 
+
+  async convertToMp3(inputBlob, inputName = 'input.webm', outputName = 'output.mp3') {
+    const { createFFmpeg, fetchFile } = await import('@ffmpeg/ffmpeg')
+    const ffmpeg = createFFmpeg({
+      log: true,
+      corePath: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/ffmpeg-core.js' // CDN fallback
+    })
+
+    if (!ffmpeg.isLoaded()) {
+      await ffmpeg.load()
+    }
+    ffmpeg.FS('writeFile', inputName, await fetchFile(inputBlob))
+    await ffmpeg.run('-i', inputName, '-vn', '-ar', '44100', '-ac', '2', '-b:a', '192k', outputName)
+    const data = ffmpeg.FS('readFile', outputName)
+    // Limpa arquivos temporários
+    ffmpeg.FS('unlink', inputName)
+    ffmpeg.FS('unlink', outputName)
+    return new Blob([data.buffer], { type: 'audio/mp3' })
+  }
+
   async downloadMusic(track) {
     try {
       // Verificar se já está baixada
@@ -104,7 +125,7 @@ class DownloadService {
           message: 'Não foi possível conectar ao servidor. Verifique se o servidor backend está em execução.' 
         };
       }
-      // Iniciar o download
+      // Iniciar o download do áudio bruto
       const response = await fetch(`${this.baseUrl}/download/${track.id}`, {
         method: 'POST',
         headers: {
@@ -118,17 +139,19 @@ class DownloadService {
         const errorMessage = await response.text();
         throw new Error(`Erro no servidor: ${errorMessage}`);
       }
-      const blob = await response.blob();
-      // Salvar blob no IndexedDB
-      await this.saveTrackBlob(track.id, blob);
+      const inputBlob = await response.blob();
+      // Converter para MP3 usando ffmpeg.wasm
+      const mp3Blob = await this.convertToMp3(inputBlob)
+      // Salvar blob MP3 no IndexedDB
+      await this.saveTrackBlob(track.id, mp3Blob);
       // Salvar informações da música baixada
       await this.saveOfflineTrack(track);
-      return { success: true, message: 'Download concluído com sucesso!' };
+      return { success: true, message: 'Download e conversão concluídos com sucesso!' };
     } catch (error) {
-      console.error('Erro ao baixar música:', error);
+      console.error('Erro ao baixar/converter música:', error);
       return { 
         success: false, 
-        message: error.message || 'Erro ao baixar música. Verifique sua conexão e tente novamente.' 
+        message: error.message || 'Erro ao baixar/converter música. Verifique sua conexão e tente novamente.' 
       };
     }
   }
